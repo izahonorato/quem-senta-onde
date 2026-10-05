@@ -59,8 +59,12 @@ def titulo(s):
     s = (s or "").strip()
     if not s: return s
     out = []
-    for i, w in enumerate(s.lower().split()):
-        out.append(w if (i and w in MINUSC) else w[:1].upper() + w[1:])
+    for i, w in enumerate(s.split()):
+        lw = w.lower()
+        if not w.endswith(".") and not any(v in sem_acento(w) for v in "AEIOUY"):   # siglas como JHC, PSB: mantém maiúsculas
+            out.append(w.upper())
+        else:
+            out.append(lw if (i and lw in MINUSC) else lw[:1].upper() + lw[1:])
     return " ".join(out)
 
 def partido(sg=None, numero=None):
@@ -158,7 +162,16 @@ def disputa(js):
                     "votos": num(c.get("vap")), "pct": pct(c.get("pvap")),
                     "e": c.get("e") == "s", "st": c.get("st", "")})
     out.sort(key=lambda x: -x["votos"])
+    if out and not any(c["pct"] for c in out):              # sem percentual no arquivo: calcula
+        tot = sum(c["votos"] for c in out) or 1
+        for c in out: c["pct"] = round(100 * c["votos"] / tot, 2)
     return out
+
+def vai_segundo_turno(t1):
+    """Governador precisa de mais de 50% dos votos válidos para vencer no 1º turno."""
+    if not t1 or not t1.get("cands"): return False
+    if any("turno" in str(c.get("st", "")).lower() for c in t1["cands"]): return True
+    return bool(t1.get("final")) and t1["cands"][0]["pct"] <= 50
 
 def eh_final(js):
     return js.get("and") == "f" or any(isinstance(c, dict) and c.get("and") == "f" for c in js.get("carg", []) or [])
@@ -212,7 +225,7 @@ def atualizar_governadores():
             if cands:
                 gov.setdefault(U, {})["t1"] = {"final": eh_final(js), "cands": cands[:6]}
         t1 = (gov.get(U) or {}).get("t1")
-        tem_t2 = bool(t1) and any("2" in str(c.get("st", "")) and "turno" in str(c.get("st", "")).lower() for c in t1["cands"])
+        tem_t2 = vai_segundo_turno(t1)
         # Só procura o arquivo do 2º turno a partir de 25/10 e onde houve 2º turno:
         # o TSE pode bloquear quem pede muitos arquivos inexistentes.
         if tem_t2 and t2_liberado:
