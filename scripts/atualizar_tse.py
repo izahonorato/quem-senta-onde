@@ -23,6 +23,8 @@ os.makedirs(os.path.join(DATA, "municipios"), exist_ok=True)
 os.makedirs(CACHE, exist_ok=True)
 
 ELEICAO = os.environ.get("TSE_ELEICAO", "6259")           # Eleições Gerais Estaduais 2026, 1º turno
+ELEICAO_T2 = os.environ.get("TSE_ELEICAO_T2", "6260")     # 2º turno (governador), 25/10/2026
+DATA_T2 = (2026, 10, 25)
 BASE = os.environ.get("TSE_BASE", "https://resultados.tse.jus.br/oficial/ele2026")
 CDN_CAND = "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_{ano}.zip"
 
@@ -30,6 +32,7 @@ UFS = ["ac","al","am","ap","ba","ce","df","es","go","ma","mg","ms","mt","pa","pb
        "pr","rj","rn","ro","rr","rs","sc","se","sp","to"]
 VAGAS_CAMARA = dict(ac=8,al=9,ap=8,am=8,ba=39,ce=22,df=8,es=10,go=17,ma=18,mt=8,ms=8,mg=53,pa=17,pb=12,
                     pr=30,pe=25,pi=10,rj=46,rn=8,rs=31,ro=8,rr=8,sc=16,sp=70,se=8,to=8)
+CARGO_GOVERNADOR = "0003"
 CARGO_SENADOR, CARGO_FEDERAL, CARGO_ESTADUAL, CARGO_DISTRITAL = "0005", "0006", "0007", "0008"
 
 # Número do partido -> sigla (usado só se o arquivo não trouxer a sigla)
@@ -138,8 +141,31 @@ def eleitos(js):
     out.sort(key=lambda x: -x["votos"])
     return out
 
-def arquivo_2026(uf, cargo):
-    url = f"{BASE}/{ELEICAO}/dados/{uf}/{uf}-c{cargo}-e{int(ELEICAO):06d}-u.json"
+def num(v):
+    try: return int(str(v or "0").replace(".", ""))
+    except ValueError: return 0
+
+def pct(v):
+    try: return float(str(v or "0").replace(",", "."))
+    except ValueError: return 0.0
+
+def disputa(js):
+    """Todos os candidatos de um cargo majoritário (governador), com votos e situação."""
+    out = []
+    for c, sg in candidatos_do_arquivo(js):
+        if str(c.get("dvt", "Válido")).lower().startswith("anulado"): continue
+        out.append({"nome": titulo(c.get("nmu") or c.get("nm") or ""), "p": partido(sg, c.get("n")),
+                    "votos": num(c.get("vap")), "pct": pct(c.get("pvap")),
+                    "e": c.get("e") == "s", "st": c.get("st", "")})
+    out.sort(key=lambda x: -x["votos"])
+    return out
+
+def eh_final(js):
+    return js.get("and") == "f" or any(isinstance(c, dict) and c.get("and") == "f" for c in js.get("carg", []) or [])
+
+def arquivo_2026(uf, cargo, eleicao=None):
+    eleicao = eleicao or ELEICAO
+    url = f"{BASE}/{eleicao}/dados/{uf}/{uf}-c{cargo}-e{int(eleicao):06d}-u.json"
     raw = baixar(url)
     time.sleep(0.15)                                   # bem abaixo do limite de 100 req/s do TSE
     if not raw: return None
@@ -170,8 +196,32 @@ def atualizar_2026():
             log(f"   {chave}: {len(lista)} eleitos {'(totalização final)' if final else '(parcial)'}")
         if len(camara.get(U, [])) not in (0, VAGAS_CAMARA[uf]):
             log(f"   aviso: Câmara {U} com {len(camara[U])} de {VAGAS_CAMARA[uf]} eleitos (pode haver sub judice)")
+    atualizar_governadores()
     salvar("senado_2026.json", senado); salvar("camara.json", camara)
     salvar("assembleias.json", assemb); salvar("status.json", status)
+
+def atualizar_governadores():
+    gov = ler("governadores.json", {}) or {}
+    hoje = datetime.now(timezone(timedelta(hours=-3))).date()
+    t2_liberado = (hoje.year, hoje.month, hoje.day) >= DATA_T2
+    for uf in UFS:
+        U = uf.upper()
+        js = arquivo_2026(uf, CARGO_GOVERNADOR)
+        if js is not None:
+            cands = disputa(js)
+            if cands:
+                gov.setdefault(U, {})["t1"] = {"final": eh_final(js), "cands": cands[:6]}
+        t1 = (gov.get(U) or {}).get("t1")
+        tem_t2 = bool(t1) and any("2" in str(c.get("st", "")) and "turno" in str(c.get("st", "")).lower() for c in t1["cands"])
+        # Só procura o arquivo do 2º turno a partir de 25/10 e onde houve 2º turno:
+        # o TSE pode bloquear quem pede muitos arquivos inexistentes.
+        if tem_t2 and t2_liberado:
+            js2 = arquivo_2026(uf, CARGO_GOVERNADOR, ELEICAO_T2)
+            if js2 is not None:
+                c2 = disputa(js2)
+                if c2: gov[U]["t2"] = {"final": eh_final(js2), "cands": c2[:2]}
+        if t1: log(f"   governador {U}: {'2º turno' if tem_t2 else ('eleito' if any(c['e'] for c in t1['cands']) else 'em apuração')}")
+    salvar("governadores.json", gov)
 
 # ------------------------------------------------ dados abertos (2022 / 2024)
 def zip_candidatos(ano):
@@ -249,6 +299,14 @@ def gerar_mock():
     salvar("senado_2022.json", {u.upper(): [pessoa(next(k))] for u in UFS})
     salvar("camara.json", {u.upper(): [pessoa(next(k)) for _ in range(VAGAS_CAMARA[u])] for u in UFS})
     salvar("assembleias.json", {u.upper(): [pessoa(next(k)) for _ in range(vag_al[u])] for u in UFS})
+    gov = {}
+    for i, u in enumerate(UFS):
+        a, b, c = pessoa(next(k)), pessoa(next(k)), pessoa(next(k))
+        if i % 4 == 0:
+            gov[u.upper()] = {"t1": {"final": True, "cands": [{**a, "pct": 46.1, "e": False, "st": "2º turno"}, {**b, "pct": 38.0, "e": False, "st": "2º turno"}, {**c, "pct": 9.2, "e": False, "st": "Não eleito"}]}}
+        else:
+            gov[u.upper()] = {"t1": {"final": True, "cands": [{**a, "pct": 57.3, "e": True, "st": "Eleito"}, {**b, "pct": 30.4, "e": False, "st": "Não eleito"}]}}
+    salvar("governadores.json", gov)
     salvar("status.json", {u.upper(): {"senado":{"final":True},"camara":{"final":True},"assembleia":{"final":True}} for u in UFS})
     cid = {"0001": {"nome": "Cidade Fictícia", "prefeito": pessoa(1), "vereadores": [pessoa(i) for i in range(15)]}}
     salvar("municipios/SP.json", cid)
