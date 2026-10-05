@@ -159,17 +159,40 @@ footer a{color:inherit}
 .pref b{font-family:var(--display);font-size:1.25rem}
 .pref span{color:var(--ink2);font-size:.9rem}
 
+.govgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:18px}
+.gov{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px 16px;border-top:6px solid var(--c);display:flex;flex-direction:column;gap:8px}
+.gov.t2{border-top-style:dashed}
+.gov header{display:flex;justify-content:space-between;align-items:baseline;gap:6px 8px;flex-wrap:wrap}
+.gov h4{margin:0;font-size:1rem}
+.gov h4 span{color:var(--ink2);font-weight:500;font-size:.85rem}
+.tag{font-size:.75rem;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--soft);color:var(--ink);white-space:nowrap}
+.tag.win{background:var(--ink);color:var(--paper)}
+.gname{font-family:var(--display);font-weight:700;font-size:1.3rem;line-height:1.15;margin:0}
+.gsub{color:var(--ink2);font-size:.85rem;margin:0}
+.duel{display:flex;flex-direction:column;gap:7px}
+.duel .r{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:.9rem}
+.duel .r b{font-weight:700}
+.duel .r small{color:var(--ink2)}
+.duel .t{grid-column:1 / -1;height:8px;border-radius:4px;background:var(--soft);overflow:hidden}
+.duel .t div{height:100%;border-radius:4px}
+.duel .pc{font-variant-numeric:tabular-nums;font-weight:700}
+.others{font-size:.8rem;color:var(--ink2);margin:2px 0 0}
+.govsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:20px}
+.govsum div{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.govsum b{display:block;font-family:var(--display);font-size:2rem;line-height:1;font-variant-numeric:tabular-nums}
+.govsum span{color:var(--ink2);font-size:.85rem}
 </style>
 </head>
 <body>
 <header class="top wrap">
   <h1 class="brand">Quem senta onde</h1>
-  <p class="lede">Quem ocupa cada cadeira do Senado, da Câmara e das Assembleias depois do 1º turno de 4 de outubro de 2026, e quem governa as cidades desde 2024. Todos os nomes e partidos vêm dos arquivos oficiais do TSE.</p>
+  <p class="lede">Quem ocupa cada cadeira do Senado, da Câmara e das Assembleias depois do 1º turno de 4 de outubro de 2026, quem já governa cada estado e onde haverá 2º turno, e quem governa as cidades desde 2024. Todos os nomes e partidos vêm dos arquivos oficiais do TSE.</p>
   <div class="meta" id="meta"></div>
   <nav class="casas" role="tablist" aria-label="Casa legislativa">
     <button role="tab" data-tab="senado" aria-selected="true">Senado <small>81</small></button>
     <button role="tab" data-tab="camara" aria-selected="false">Câmara <small>513</small></button>
     <button role="tab" data-tab="alesp" aria-selected="false">Assembleias <small>1.059</small></button>
+    <button role="tab" data-tab="gov" aria-selected="false">Governadores <small>27</small></button>
     <button role="tab" data-tab="munic" aria-selected="false">Municípios <small>2024</small></button>
   </nav>
 </header>
@@ -205,7 +228,7 @@ const fmt = n => (n||0).toLocaleString("pt-BR");
 const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 /* ---------- Estado e dados ---------- */
-const state = {tab:"senado", color:"faixa", uf:"SP", camUf:"BR", munUf:null, munCod:null};
+const state = {tab:"senado", gf:"todos", color:"faixa", uf:"SP", camUf:"BR", munUf:null, munCod:null};
 const D = {};
 async function getJSON(path){ try{ const r=await fetch(path,{cache:"no-store"}); return r.ok? await r.json(): null }catch(e){ return null } }
 
@@ -324,6 +347,47 @@ function viewAle(){
   return `<section class="panel"><div class="head"><div><h2>${casa} — ${nome}${situ}</h2><p>${total} cadeiras.${list.length&&list.length<total?` O TSE atribuiu ${list.length} até agora.`:""}</p></div>${colorToggle()}</div>
     <div class="ufpick" role="group" aria-label="Escolha o estado">${picks}</div>${body}</section>`;
 }
+function govState(g){
+  if(!g||!g.t1)return {tipo:"vazio"};
+  const t2=g.t2, t1=g.t1;
+  if(t2&&t2.final&&t2.cands.some(c=>c.e)) return {tipo:"eleito2",w:t2.cands.find(c=>c.e),cands:t2.cands};
+  const w=t1.cands.find(c=>c.e);
+  if(w) return {tipo:"eleito",w,cands:t1.cands};
+  const fin=t1.cands.filter(c=>/2/.test(c.st)&&/turno/i.test(c.st));
+  if(fin.length) return {tipo:"t2",cands:t2&&t2.cands.length?t2.cands:fin, parcial2:!!(t2&&!t2.final)};
+  return {tipo:"apurando",cands:t1.cands};
+}
+const pc = x => (x||0).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
+function duelHTML(cands){
+  return `<div class="duel">${cands.map(c=>{const f=pinfo(c.p)[1];return `<div class="r"><span><b>${esc(c.nome)}</b> <small>${esc(c.p)}</small></span><span class="pc">${pc(c.pct)}</span><div class="t"><div style="width:${Math.min(100,c.pct||0)}%;background:${faixaVar(f)}"></div></div></div>`}).join("")}</div>`;
+}
+function viewGov(){
+  const G=D.gov||{};
+  const head=`<div class="head"><div><h2>Governadores</h2><p>Quem foi eleito no 1º turno e quem disputa o 2º turno em 25 de outubro, segundo a totalização do TSE.</p></div>
+    <div class="seg" role="group" aria-label="Filtrar estados"><button data-gf="todos" aria-pressed="${state.gf==="todos"}">Todos</button><button data-gf="eleito" aria-pressed="${state.gf==="eleito"}">Eleitos</button><button data-gf="t2" aria-pressed="${state.gf==="t2"}">2º turno</button></div></div>`;
+  if(!Object.keys(G).length){current=[];return `<section class="panel">${head}${emptyHTML("Os arquivos de governador ainda não foram baixados do TSE.")}</section>`}
+  const st=UFS.map(uf=>({uf,...govState(G[uf])}));
+  const eleitos=st.filter(x=>x.tipo==="eleito"||x.tipo==="eleito2"), t2=st.filter(x=>x.tipo==="t2"), ap=st.filter(x=>x.tipo==="apurando"||x.tipo==="vazio");
+  const porPartido={}; eleitos.forEach(x=>porPartido[x.w.p]=(porPartido[x.w.p]||0)+1);
+  const b=blocks(porPartido);
+  const show=st.filter(x=>state.gf==="todos"||(state.gf==="eleito"?(x.tipo==="eleito"||x.tipo==="eleito2"):x.tipo==="t2"));
+  current=[];
+  const cards=show.map(x=>{
+    const nome=UF[x.uf][0];
+    if(x.tipo==="eleito"||x.tipo==="eleito2"){const f=pinfo(x.w.p)[1], outros=x.cands.filter(c=>c!==x.w).slice(0,2);
+      return `<article class="gov" style="--c:${faixaVar(f)}"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag win">${x.tipo==="eleito2"?"Eleito no 2º turno":"Eleito no 1º turno"}</span></header>
+        <p class="gname">${esc(x.w.nome)}</p><p class="gsub">${esc(x.w.p)}, ${f>=0?FAIXAS[f]:"sem classificação"}. ${pc(x.w.pct)} dos votos válidos.</p>
+        ${outros.length?`<p class="others">Depois: ${outros.map(c=>`${esc(c.nome)} (${esc(c.p)}) ${pc(c.pct)}`).join("; ")}</p>`:""}</article>`;}
+    if(x.tipo==="t2") return `<article class="gov t2" style="--c:var(--fx)"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag">${x.parcial2?"2º turno em apuração":"2º turno em 25/10"}</span></header>${duelHTML(x.cands.slice(0,2))}</article>`;
+    return `<article class="gov" style="--c:var(--line)"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag">${x.tipo==="vazio"?"Sem dados":"Em apuração"}</span></header>${x.cands&&x.cands.length?duelHTML(x.cands.slice(0,3)):'<p class="gsub">O TSE ainda não publicou o resultado deste estado.</p>'}</article>`;
+  }).join("");
+  return `<section class="panel">${head}
+    <div class="govsum"><div><b>${eleitos.length}</b><span>governadores já eleitos</span></div><div><b>${t2.length}</b><span>estados com 2º turno</span></div>${ap.length?`<div><b>${ap.length}</b><span>ainda em apuração</span></div>`:""}
+      <div><b>${b[0]}</b><span>eleitos de esquerda e centro-esq.</span></div><div><b>${b[1]}</b><span>eleitos de centro</span></div><div><b>${b[2]}</b><span>eleitos de direita e centro-dir.</span></div></div>
+    <div class="govgrid">${cards||'<p class="gsub">Nenhum estado neste filtro.</p>'}</div>
+    ${eleitos.length?`<div class="sub"><h3>Governadores eleitos por partido</h3>${hbarsHTML(porPartido)}</div>`:""}
+  </section>`;
+}
 function hbarsHTML(obj,limit){
   const list=Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,limit||99), max=list.length?list[0][1]:1;
   return `<div class="hbars">${list.map(([s,n])=>`<div class="hb"><span><b>${esc(s)}</b></span><div class="t"><div style="width:${n/max*100}%;background:${faixaVar(pinfo(s)[1])}"></div></div><span class="v">${fmt(n)}</span></div>`).join("")}</div>`;
@@ -359,7 +423,7 @@ function viewMunic(){
 /* ---------- Render e interação ---------- */
 const main=document.getElementById("main");
 function render(){
-  main.innerHTML={senado:viewSenado,camara:viewCamara,alesp:viewAle,munic:viewMunic}[state.tab]();
+  main.innerHTML={senado:viewSenado,camara:viewCamara,alesp:viewAle,gov:viewGov,munic:viewMunic}[state.tab]();
   bindHemi(); bindNames();
 }
 function bindNames(){
@@ -395,6 +459,7 @@ document.querySelector("nav.casas").addEventListener("click",e=>{const b=e.targe
   state.tab=b.dataset.tab; document.querySelectorAll("nav.casas button").forEach(x=>x.setAttribute("aria-selected",x===b)); render();});
 main.addEventListener("click",e=>{
   const c=e.target.closest("[data-color]"); if(c){state.color=c.dataset.color;render();return}
+  const gf=e.target.closest("[data-gf]"); if(gf){state.gf=gf.dataset.gf;render();return}
   const u=e.target.closest("[data-uf]"); if(u){state.uf=u.dataset.uf;render();}
 });
 main.addEventListener("change",async e=>{
@@ -409,8 +474,8 @@ main.addEventListener("change",async e=>{
 });
 
 (async function(){
-  const [meta,sen26,sen22,cam,ale,status,mun]=await Promise.all(["meta","senado_2026","senado_2022","camara","assembleias","status","municipios/indice"].map(n=>getJSON(`data/${n}.json`)));
-  Object.assign(D,{meta,sen26,sen22,cam,ale,status,mun});
+  const [meta,sen26,sen22,cam,ale,status,mun,gov]=await Promise.all(["meta","senado_2026","senado_2022","camara","assembleias","status","municipios/indice","governadores"].map(n=>getJSON(`data/${n}.json`)));
+  Object.assign(D,{meta,sen26,sen22,cam,ale,status,mun,gov});
   const m=document.getElementById("meta");
   if(meta){
     const finais=status?Object.values(status).filter(s=>s.camara&&s.camara.final).length:0;
