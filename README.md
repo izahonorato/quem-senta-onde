@@ -21,9 +21,6 @@ classificação acadêmica explicada no rodapé do site.
 **Uma Assembleia aparece vazia.** O TSE só publica o arquivo de eleitos depois da totalização
 final daquele estado. O site mostra o aviso e preenche sozinho na próxima rodada.
 
-**Um partido aparece como "Nº 14".** O TSE mandou um número de partido que o script não conhecia.
-Abra `scripts/atualizar_tse.py`, procure `NUM_PARTIDO` e acrescente o número com a sigla.
-
 **O suplente que assumiu não aparece.** O TSE registra quem foi eleito. Posse de suplente
 (por exemplo, quando um senador vira governador) é registro do Senado, não do TSE.
 
