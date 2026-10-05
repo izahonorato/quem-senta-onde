@@ -1,0 +1,74 @@
+name: Atualizar com dados do TSE
+
+on:
+  schedule:
+    - cron: "7 * * * *"        # uma vez por hora (horário UTC)
+  workflow_dispatch:            # botão "Run workflow" para rodar na hora
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atualizar
+  cancel-in-progress: false
+
+env:
+  PROJETO_CLOUDFLARE: quem-senta-onde
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Guardar arquivos grandes do TSE entre execuções
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: tse-dados-abertos-v1
+
+      - name: Baixar resultados oficiais do TSE
+        run: python scripts/atualizar_tse.py
+
+      - name: Ver se os dados mudaram
+        id: mudou
+        run: |
+          git add site/data
+          if git diff --cached --quiet -- site/data ':!site/data/meta.json'; then
+            echo "sim=nao" >> "$GITHUB_OUTPUT"
+            echo "Nada mudou no TSE desde a última vez; não publica."
+          else
+            echo "sim=sim" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Salvar dados no repositório
+        if: steps.mudou.outputs.sim == 'sim'
+        run: |
+          git config user.name "robo-tse"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Dados do TSE $(date -u +'%d/%m %H:%M') UTC"
+          git push
+
+      # Publica quando os dados mudaram ou quando alguém alterou o site (push / botão manual).
+      - name: Criar o projeto no Cloudflare (só na primeira vez)
+        if: steps.mudou.outputs.sim == 'sim' || github.event_name != 'schedule'
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create ${{ env.PROJETO_CLOUDFLARE }} --production-branch=main
+
+      - name: Publicar no Cloudflare Pages
+        if: steps.mudou.outputs.sim == 'sim' || github.event_name != 'schedule'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=${{ env.PROJETO_CLOUDFLARE }} --branch=main --commit-dirty=true
