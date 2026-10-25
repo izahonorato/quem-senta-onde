@@ -381,7 +381,7 @@ function govState(g){
   if(t2&&t2.final&&t2.cands.length){const w=t2.cands.find(c=>c.e)||t2.cands[0]; return {tipo:"eleito2",w,cands:t2.cands,t1:t1.cands}}
   const fin=t1.cands.filter(is2t);
   if(fin.length>=2||(t1.final&&top.pct<=50))
-    return {tipo:"t2",cands:t2&&t2.cands.length?t2.cands:(fin.length>=2?fin:t1.cands.slice(0,2)),t1:t1.cands,parcial2:!!t2};
+    return {tipo:"t2",cands:t2&&t2.cands.length?t2.cands:(fin.length>=2?fin:t1.cands.slice(0,2)),t1:t1.cands,parcial2:!!t2,pst:t2&&t2.pst,hg:t2&&t2.hg};
   if(top.pct>50&&(top.e||t1.final)) return {tipo:"eleito",w:top,cands:t1.cands};
   return {tipo:"apurando",cands:t1.cands};
 }
@@ -415,7 +415,7 @@ function govDetail(x){
       <h5>${x.tipo==="eleito2"?"Resultado do 2º turno":"Resultado"}</h5>${duelHTML(x.cands.slice(0,6))}
       ${x.tipo==="eleito2"&&x.t1?`<h5>1º turno</h5>${duelHTML(x.t1.slice(0,4))}`:""}</article>`;}
   if(x.tipo==="t2") return `<article class="gov big t2" style="--c:var(--fx)"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag">${x.parcial2?"2º turno em apuração":"2º turno em 25/10"}</span></header>
-      <p class="gsub">Nenhum candidato passou de 50% dos votos válidos. ${x.parcial2?"Parcial do 2º turno:":"Vão para o 2º turno:"}</p>${duelHTML(x.cands.slice(0,2))}
+      <p class="gsub">Nenhum candidato passou de 50% dos votos válidos. ${x.parcial2?(x.pst!=null?`Parcial do 2º turno, com ${pc(x.pst)} das seções apuradas${x.hg?` (TSE, ${esc(x.hg)})`:""}:`:"Parcial do 2º turno:"):"Vão para o 2º turno:"}</p>${duelHTML(x.cands.slice(0,2))}
       ${x.t1?`<h5>Resultado do 1º turno</h5>${duelHTML(x.t1.slice(0,6))}`:""}</article>`;
   return `<article class="gov big" style="--c:var(--line)"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag">${x.tipo==="vazio"?"Sem dados":"Em apuração"}</span></header>${x.cands&&x.cands.length?duelHTML(x.cands.slice(0,6)):'<p class="gsub">O TSE ainda não publicou o resultado deste estado.</p>'}</article>`;
 }
@@ -480,6 +480,56 @@ function viewMunic(){
   </section>`;
 }
 
+
+/* ---------- 2º turno de governador ao vivo: lido direto do TSE no navegador ----------
+   O robô do GitHub roda de hora em hora; na noite do 2º turno isso é lento demais.
+   Aqui a página busca sozinha o arquivo de cada estado com 2º turno, a cada minuto. */
+const TSE_ELE = "https://resultados.tse.jus.br/oficial/ele2026", GOV_T2 = "6260";
+const semAc = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+const numTSE = x => { if(x==null||x==="") return 0; if(typeof x==="number") return x; const t=String(x).trim(); return t.includes(",")? +t.replace(/\./g,"").replace(",",".")||0 : +t||0; };
+let tseRoute = "direct";
+async function tseJSON(path){
+  const go = async r => { const res = await fetch((r==="direct"?TSE_ELE:"/tse/ele2026")+path,{cache:"no-cache"}); if(!res.ok){const e=new Error(res.status);e.status=res.status;throw e} return res.json(); };
+  try{ return await go(tseRoute) }catch(e){ if(e.status===404) throw e; const o=tseRoute==="direct"?"proxy":"direct"; const j=await go(o); tseRoute=o; return j; }
+}
+function govT2FromTSE(js, ref){
+  const out=[];
+  (function walk(o,sg){
+    if(Array.isArray(o)){o.forEach(x=>walk(x,sg));return}
+    if(!o||typeof o!=="object")return;
+    const p=o.sg||sg;
+    if("vap" in o && (o.nm||o.nmu)){ out.push({raw:o.nmu||o.nm, sg:p, n:String(o.n||""), votos:numTSE(o.vap), pct:numTSE(o.pvap), e:o.e==="s"||/^eleito/i.test(o.st||""), st:o.st||""}); return }
+    for(const k in o){ if(k!=="s"&&k!=="v"&&k!=="e"&&typeof o[k]==="object") walk(o[k],p) }
+  })(js.carg||js,"");
+  const byName={}; (ref||[]).forEach(c=>byName[semAc(c.nome)]=c);
+  const cands=out.map(c=>{ const r=byName[semAc(c.raw)]; return {nome:r?r.nome:c.raw.toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase()), p:r?r.p:(c.sg||"?").toUpperCase(), votos:c.votos, pct:c.pct, e:c.e, st:c.st}; });
+  const tot=cands.reduce((a,c)=>a+c.votos,0);
+  if(tot && !cands.some(c=>c.pct)) cands.forEach(c=>c.pct=c.votos/tot*100);
+  cands.sort((a,b)=>b.votos-a.votos);
+  const s=js.s||{}; let pst=numTSE(s.pst??js.pst); const ts=numTSE(s.ts??js.ts), st=numTSE(s.st??js.st); if(!pst&&ts) pst=st/ts*100;
+  const final = js.and==="f" || (js.carg||[]).some(c=>c&&c.and==="f") || cands.some(c=>c.e);
+  return {final, cands, pst, hg:js.hg||""};
+}
+let govTimer=null;
+async function govLive(){
+  clearTimeout(govTimer);
+  const G=D.gov||{};
+  const ufs=UFS.filter(u=>{ const g=G[u]; if(!g||!g.t1) return false; const x=govState(g); return x.tipo==="t2" || (g.t2 && !g.t2.final); });
+  if(!ufs.length) return;
+  let mudou=false, i=0;
+  await Promise.all(Array.from({length:4},async()=>{ while(i<ufs.length){ const u=ufs[i++], l=u.toLowerCase();
+    try{
+      const js=await tseJSON(`/${GOV_T2}/dados/${l}/${l}-c0003-e${GOV_T2.padStart(6,"0")}-u.json`);
+      const t2=govT2FromTSE(js, (G[u].t2&&G[u].t2.cands)||G[u].t1.cands);
+      if(t2.cands.length){ G[u].t2=t2; mudou=true; }
+    }catch(e){}
+  }}));
+  if(mudou && state.tab==="gov" && !main.querySelector("details.names[open]")) render();
+  const pend=ufs.some(u=>!(G[u].t2&&G[u].t2.final));
+  if(pend) govTimer=setTimeout(govLive, document.hidden||state.tab!=="gov" ? 180000 : 60000);
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && state.tab==="gov") govLive(); });
+
 /* ---------- Render e interação ---------- */
 const main=document.getElementById("main");
 function render(){
@@ -516,7 +566,7 @@ function bindHemi(){
     cs.forEach((c,i)=>setTimeout(()=>{c.style.transition="opacity .35s";c.style.opacity=""},Math.min(i*6,700)));}
 }
 document.querySelector("nav.casas").addEventListener("click",e=>{const b=e.target.closest("button[data-tab]");if(!b)return;
-  state.tab=b.dataset.tab; document.querySelectorAll("nav.casas button").forEach(x=>x.setAttribute("aria-selected",x===b)); render();});
+  state.tab=b.dataset.tab; document.querySelectorAll("nav.casas button").forEach(x=>x.setAttribute("aria-selected",x===b)); render(); if(state.tab==="gov") govLive();});
 main.addEventListener("click",e=>{
   const c=e.target.closest("[data-color]"); if(c){state.color=c.dataset.color;render();return}
   const gf=e.target.closest("[data-gf]"); if(gf){state.gf=gf.dataset.gf;render();return}
@@ -550,6 +600,7 @@ main.addEventListener("change",async e=>{
     m.innerHTML=`<span class="pill"><i></i>Última mudança nos dados do TSE: <b>${esc(meta.atualizado)}</b></span><span class="pill ${finais<27?"warn":""}"><i></i>Totalização final na Câmara: <b>${finais} de 27</b> estados</span>${meta.mock?'<span class="mock">DADOS FICTÍCIOS de teste. Rode o robô para trazer os dados reais do TSE.</span>':""}`;
   } else m.innerHTML='<span class="pill warn"><i></i>Aguardando a primeira coleta do TSE</span>';
   render();
+  govLive();
 })();
 </script>
 </body>
