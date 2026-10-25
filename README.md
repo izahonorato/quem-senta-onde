@@ -16,6 +16,25 @@ republica o site no **Cloudflare Pages** (gratuito, tráfego ilimitado e permite
 A única informação que não vem do TSE é a cor de esquerda/centro/direita, que é uma
 classificação acadêmica explicada no rodapé do site.
 
+## Apuração ao vivo (Presidente)
+
+A página `site/apuracao/` mostra a apuração presidencial em tempo real. Ela não depende do robô:
+o navegador de quem visita lê direto os arquivos públicos do TSE a cada 30 segundos.
+
+| Turno | Código da eleição | Endereço |
+|---|---|---|
+| 1º turno (04/10/2026) | 6257 | quem-senta-onde.pages.dev/apuracao/?eleicao=6257 |
+| 2º turno (25/10/2026) | 6258 | quem-senta-onde.pages.dev/apuracao/ |
+
+`?demo=1` mostra uma simulação com números inventados, para testar o visual.
+
+Se um dia o TSE bloquear a leitura direta pelo navegador, a página passa a buscar os mesmos
+arquivos por `functions/tse/[[path]].js`, uma função do Cloudflare Pages que só repassa
+arquivos `.json` de `resultados.tse.jus.br/oficial/`. Ela é publicada junto com o site pelo
+`wrangler pages deploy`, que procura a pasta `functions` na raiz do repositório.
+
+Mapa dos estados: MapSVG, licença CC BY 4.0.
+
 ## Perguntas comuns
 
 **Uma Assembleia aparece vazia.** O TSE só publica o arquivo de eleitos depois da totalização
