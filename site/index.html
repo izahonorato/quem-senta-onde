@@ -199,6 +199,11 @@ footer a{color:inherit}
 .gov.big{padding:18px 20px 20px}
 .gov.big .gname{font-size:1.7rem}
 .gov h5{margin:10px 0 2px;font-size:.8rem;color:var(--ink2);font-weight:600}
+.aovivo{display:inline-flex;align-items:center;gap:10px;margin-top:18px;padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);text-decoration:none;font-size:.95rem}
+.aovivo:hover{border-color:var(--ink)}
+.aovivo b{font-weight:700}
+.aovivo i{width:9px;height:9px;border-radius:50%;background:var(--f0);flex:none;animation:aov 1.6s infinite}
+@keyframes aov{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--f0) 60%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
 </style>
 </head>
 <body>
@@ -206,6 +211,7 @@ footer a{color:inherit}
   <h1 class="brand">Quem senta onde</h1>
   <p class="lede">Quem ocupa cada cadeira do Senado, da Câmara e das Assembleias depois do 1º turno de 4 de outubro de 2026, quem já governa cada estado e onde haverá 2º turno, e quem governa as cidades desde 2024. Todos os nomes e partidos vêm dos arquivos oficiais do TSE.</p>
   <div class="meta" id="meta"></div>
+  <a class="aovivo" href="apuracao/"><i aria-hidden="true"></i><span><b>Apuração ao vivo</b> · Presidente, 2º turno</span><span aria-hidden="true">→</span></a>
   <nav class="casas" role="tablist" aria-label="Casa legislativa">
     <button role="tab" data-tab="senado" aria-selected="true">Senado <small>81</small></button>
     <button role="tab" data-tab="camara" aria-selected="false">Câmara <small>513</small></button>
