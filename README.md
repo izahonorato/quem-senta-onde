@@ -35,6 +35,15 @@ arquivos `.json` de `resultados.tse.jus.br/oficial/`. Ela é publicada junto com
 
 Mapa dos estados: MapSVG, licença CC BY 4.0.
 
+## Projeção ao vivo
+
+A página `site/projecao/` estima o resultado final a partir do que já foi apurado. Ela divide o
+país em 143 pedaços (as 115 maiores cidades e capitais, o resto de cada estado e o exterior),
+compara cada pedaço com o 1º turno (eleição 6257) e projeta as urnas que faltam. A conta roda no
+navegador de quem visita, a cada minuto. O método está explicado na própria página. É uma
+versão simplificada, inspirada em github.com/rodrigomahlmeister/projecao-2026-metodo, sem usar
+o código dele. `?demo=1` mostra uma simulação.
+
 ## Perguntas comuns
 
 **Uma Assembleia aparece vazia.** O TSE só publica o arquivo de eleitos depois da totalização
