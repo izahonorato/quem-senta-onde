@@ -1,0 +1,7 @@
+# Mantém as ações do GitHub atualizadas, já fixadas por SHA (abre um pull request por mês quando houver versão nova).
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
