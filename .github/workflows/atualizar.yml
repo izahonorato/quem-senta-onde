@@ -40,7 +40,8 @@ jobs:
         id: mudou
         run: |
           git add site/data
-          if git diff --cached --quiet -- site/data ':!site/data/meta.json'; then
+          if [ -d site/fotos ]; then git add site/fotos; fi
+          if git diff --cached --quiet -- site/data site/fotos ':!site/data/meta.json'; then
             echo "sim=nao" >> "$GITHUB_OUTPUT"
             echo "Nada mudou no TSE desde a última vez; não publica."
           else
