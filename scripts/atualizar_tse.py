@@ -141,7 +141,7 @@ def eleitos(js):
             try: votos = int(str(c.get("vap", "0")).replace(".", ""))
             except ValueError: votos = 0
             out.append({"nome": titulo(nome), "p": partido(sg, num), "n": num, "votos": votos,
-                        "st": c.get("st", "")})
+                        "st": c.get("st", ""), "sq": str(c.get("sqcand") or "")})
     out.sort(key=lambda x: -x["votos"])
     return out
 
@@ -166,7 +166,7 @@ def disputa(js):
         if str(c.get("dvt", "Válido")).lower().startswith("anulado"): continue
         out.append({"nome": titulo(c.get("nmu") or c.get("nm") or ""), "p": partido(sg, c.get("n")),
                     "votos": num(c.get("vap")), "pct": pct(c.get("pvap")),
-                    "e": marcado_eleito(c), "st": c.get("st", "")})
+                    "e": marcado_eleito(c), "st": c.get("st", ""), "sq": str(c.get("sqcand") or "")})
     out.sort(key=lambda x: -x["votos"])
     if out and not any(c["pct"] for c in out):              # sem percentual no arquivo: calcula
         tot = sum(c["votos"] for c in out) or 1
@@ -270,6 +270,57 @@ def presidente_2t():
             if baixar(f"{BASE}/{ele}/fotos/br/{sq}.jpeg", os.path.join(fotos, sq + ".jpeg")): break
     log(f"[presidente] {len(novo)} arquivos salvos ({'final' if eh_final(novo['br']) else 'parcial'})")
 
+
+# ------------------------------------------------ fotos oficiais dos eleitos (TSE)
+FOTOS = os.path.join(RAIZ, "site", "fotos")
+def baixar_fotos(limite=3000):
+    """Baixa uma vez a foto oficial de cada eleito para site/fotos/<sqcand>.jpeg.
+    Fotos que o TSE não tem ficam anotadas em fotos_faltando.json e não são pedidas de novo,
+    porque o TSE bloqueia quem faz muitos pedidos que dão 404."""
+    os.makedirs(FOTOS, exist_ok=True)
+    falta = ler("fotos_faltando.json", {}) or {}
+    pedidos = {}                                    # sq -> lista de URLs para tentar, em ordem
+    def add(sq, uf, eleicoes, ano=2026):
+        sq = str(sq or "")
+        if not sq or sq in pedidos or sq in falta or os.path.exists(os.path.join(FOTOS, sq + ".jpeg")): return
+        base = f"https://resultados.tse.jus.br/oficial/ele{ano}"
+        urls = [f"{base}/{e}/fotos/{u}/{sq}.jpeg" for e in eleicoes for u in (uf.lower(), "br")]
+        if ano == 2022:
+            urls.append(f"https://divulgacandcontas.tse.jus.br/divulga/rest/arquivo/img/2040602022/{sq}/{uf.upper()}")
+        pedidos[sq] = urls
+    for nome in ("senado_2026.json", "camara.json", "assembleias.json"):
+        for uf, lista in (ler(nome, {}) or {}).items():
+            for x in lista: add(x.get("sq"), uf, [ELEICAO])
+    for uf, g in (ler("governadores.json", {}) or {}).items():
+        for c in ((g.get("t2") or {}).get("cands") or []): add(c.get("sq"), uf, [ELEICAO_T2, ELEICAO])
+        for c in ((g.get("t1") or {}).get("cands") or [])[:2]: add(c.get("sq"), uf, [ELEICAO])
+    for uf, lista in (ler("senado_2022.json", {}) or {}).items():
+        for x in lista: add(x.get("sq"), uf, ["546", "544"], ano=2022)
+    if not pedidos: log("[fotos] nada novo"); return
+    log(f"[fotos] {len(pedidos)} fotos para buscar")
+    # se um modelo de endereço não acerta nenhuma das primeiras 15 tentativas, deixa de usá-lo nesta rodada
+    tent, acertos, ok = {}, {}, 0
+    def modelo(u, sq):
+        u = u.replace(sq, "{sq}")
+        if "/fotos/" in u:
+            ini, fim = u.split("/fotos/", 1); seg = fim.split("/", 1)[0]
+            return f"{ini}/fotos/{'br' if seg == 'br' else '{uf}'}"
+        return u.rsplit("/", 1)[0]
+    for i, (sq, urls) in enumerate(list(pedidos.items())[:limite]):
+        achou = False
+        for u in urls:
+            m = modelo(u, sq)
+            if tent.get(m, 0) >= 15 and not acertos.get(m): continue
+            tent[m] = tent.get(m, 0) + 1
+            raw = baixar(u, tentativas=1)
+            time.sleep(0.08)
+            if raw and (raw[:3] == b"\xff\xd8\xff" or raw[:4] == b"\x89PNG"):
+                with open(os.path.join(FOTOS, sq + ".jpeg"), "wb") as fh: fh.write(raw)
+                acertos[m] = acertos.get(m, 0) + 1; achou = True; ok += 1; break
+        if not achou: falta[sq] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    salvar("fotos_faltando.json", falta)
+    log(f"[fotos] {ok} baixadas, {len(falta)} sem foto no TSE")
+
 # ------------------------------------------------ dados abertos (2022 / 2024)
 def zip_candidatos(ano):
     destino = os.path.join(CACHE, f"consulta_cand_{ano}.zip")
@@ -300,7 +351,7 @@ def senado_2022():
         if sq in vistos: continue
         vistos.add(sq)
         out.setdefault(r["SG_UF"], []).append({"nome": titulo(r.get("NM_URNA_CANDIDATO")),
-                                               "p": partido(r.get("SG_PARTIDO"))})
+                                               "p": partido(r.get("SG_PARTIDO")), "sq": sq or ""})
     salvar("senado_2022.json", out)
     log(f"[2022] {sum(len(v) for v in out.values())} senadores com mandato até 2031")
 
@@ -373,8 +424,11 @@ def main():
     atualizar_2026()
     presidente_2t()
     if not a.so_2026:
-        if a.forcar_base or not os.path.exists(os.path.join(DATA, "senado_2022.json")): senado_2022()
+        s22 = ler("senado_2022.json", {}) or {}
+        sem_sq = any("sq" not in x for v in s22.values() for x in v)
+        if a.forcar_base or not s22 or sem_sq: senado_2022()
         if a.forcar_base or not os.path.exists(os.path.join(DATA, "municipios", "indice.json")): municipios_2024()
+    baixar_fotos()
     meta()
 
 def meta(mock=False):
