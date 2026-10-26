@@ -271,6 +271,40 @@ def presidente_2t():
     log(f"[presidente] {len(novo)} arquivos salvos ({'final' if eh_final(novo['br']) else 'parcial'})")
 
 
+def presidente_2t_municipios():
+    """Resultado do 2º turno presidencial em cada município (para o zoom do mapa), baixado uma vez.
+    Grava site/data/pres2t_mun/<UF>.json = {"n": [números dos finalistas], "m": {código TSE: [nome, votos..., brancos, nulos]}}."""
+    br = (ler("presidente_2t.json", {}) or {}).get("br")
+    if not br or not eh_final(br):
+        log("[presidente/municípios] espera o resultado final nacional"); return
+    finalistas = sorted(candidatos_do_arquivo(br), key=lambda x: -num(x[0].get("vap")))[:2]
+    nums = sorted(str(c.get("n")) for c, _ in finalistas)
+    pasta = os.path.join(DATA, "pres2t_mun"); os.makedirs(pasta, exist_ok=True)
+    erros_seguidos = 0
+    for uf in UFS:
+        destino = os.path.join(pasta, uf.upper() + ".json")
+        if os.path.exists(destino): continue                 # já baixado (resultado final não muda)
+        cidades = ler(os.path.join("municipios", uf.upper() + ".json"), {}) or {}
+        m = {}
+        for cod, info in cidades.items():
+            cod = str(cod).zfill(5)
+            raw = baixar(f"{BASE}/{PRES_T2}/dados/{uf}/{uf}{cod}-c0001-e{int(PRES_T2):06d}-u.json", tentativas=2)
+            time.sleep(0.05)
+            if not raw:
+                erros_seguidos += 1
+                if erros_seguidos >= 25 and not m:
+                    log("[presidente/municípios] o TSE não respondeu aos arquivos por município; tenta de novo na próxima rodada"); return
+                continue
+            erros_seguidos = 0
+            try: js = json.loads(raw)
+            except Exception: continue
+            votos = {str(c.get("n")): num(c.get("vap")) for c, _ in candidatos_do_arquivo(js)}
+            v = js.get("v") or {}
+            m[cod] = [info.get("nome", ""), *[votos.get(n, 0) for n in nums], num(v.get("vb")), num(v.get("tvn") or v.get("vn"))]
+        if m:
+            salvar(os.path.join("pres2t_mun", uf.upper() + ".json"), {"n": nums, "m": m})
+            log(f"[presidente/municípios] {uf.upper()}: {len(m)} de {len(cidades)} cidades")
+
 # ------------------------------------------------ fotos oficiais dos eleitos (TSE)
 FOTOS = os.path.join(RAIZ, "site", "fotos")
 def baixar_fotos(limite=3000):
@@ -423,6 +457,7 @@ def main():
         gerar_mock(); meta(mock=True); return
     atualizar_2026()
     presidente_2t()
+    presidente_2t_municipios()
     if not a.so_2026:
         s22 = ler("senado_2022.json", {}) or {}
         sem_sq = any("sq" not in x for v in s22.values() for x in v)

@@ -29,12 +29,9 @@ o TSE ao vivo; agora lê a cópia final que o robô salva em `site/data/presiden
 
 `?demo=1` mostra uma simulação com números inventados, para testar o visual.
 
-Se um dia o TSE bloquear a leitura direta pelo navegador, a página passa a buscar os mesmos
-arquivos por `functions/tse/[[path]].js`, uma função do Cloudflare Pages que só repassa
-arquivos `.json` de `resultados.tse.jus.br/oficial/`. Ela é publicada junto com o site pelo
-`wrangler pages deploy`, que procura a pasta `functions` na raiz do repositório.
+A função `functions/tse/` que servia de reserva durante a apuração foi removida depois da eleição.
 
-Mapa dos estados: MapSVG, licença CC BY 4.0.
+Contornos do mapa: malhas municipais do IBGE (via ibge-cidades-com-poligonos e kml-brasil, licenças ISC e MIT).
 
 ## Projeção do 2º turno
 
@@ -45,6 +42,19 @@ navegador de quem visita. Agora que a eleição acabou, a página compara as lei
 durante a noite (`site/data/historico_2t.json`) com o resultado final e mostra o índice de acerto. É uma
 versão simplificada, inspirada em github.com/rodrigomahlmeister/projecao-2026-metodo, sem usar
 o código dele. `?demo=1` mostra uma simulação.
+
+## Mapa com zoom (regiões e cidades)
+
+Na página de resultado, o mapa aproxima por região, estado e cidade. Os contornos ficam em `site/data/mapa/`
+(gerados uma vez a partir das malhas do IBGE; veja `scripts/mapa/LEIAME.md`) e o resultado de cada cidade em
+`site/data/pres2t_mun/`, que o robô baixa uma única vez do TSE depois da totalização final.
+
+## Segurança
+
+- Cabeçalhos de segurança (CSP e outros) em `site/_headers`. Por causa da CSP, o JavaScript das páginas fica em
+  `site/js/` e não pode haver `<script>` nem `onclick=` dentro do HTML.
+- As ações do GitHub ficam fixadas por SHA; o Dependabot (`.github/dependabot.yml`) abre um pull request quando houver versão nova.
+- O token do Cloudflare deve ter só a permissão "Cloudflare Pages: Edit".
 
 ## Perguntas comuns
 
