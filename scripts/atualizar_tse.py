@@ -153,6 +153,12 @@ def pct(v):
     try: return float(str(v or "0").replace(",", "."))
     except ValueError: return 0.0
 
+def marcado_eleito(c):
+    """O TSE marca o eleito com e="s" e/ou st="Eleito" / "Matematicamente eleito"."""
+    if str(c.get("e", "")).lower().startswith("s"): return True
+    t = sem_acento(f"{c.get('st','')} {c.get('dvt','')}")
+    return "ELEIT" in t and "NAO ELEIT" not in t
+
 def disputa(js):
     """Todos os candidatos de um cargo majoritário (governador), com votos e situação."""
     out = []
@@ -160,7 +166,7 @@ def disputa(js):
         if str(c.get("dvt", "Válido")).lower().startswith("anulado"): continue
         out.append({"nome": titulo(c.get("nmu") or c.get("nm") or ""), "p": partido(sg, c.get("n")),
                     "votos": num(c.get("vap")), "pct": pct(c.get("pvap")),
-                    "e": c.get("e") == "s", "st": c.get("st", "")})
+                    "e": marcado_eleito(c), "st": c.get("st", "")})
     out.sort(key=lambda x: -x["votos"])
     if out and not any(c["pct"] for c in out):              # sem percentual no arquivo: calcula
         tot = sum(c["votos"] for c in out) or 1
@@ -235,6 +241,34 @@ def atualizar_governadores():
                 if c2: gov[U]["t2"] = {"final": eh_final(js2), "cands": c2[:2]}
         if t1: log(f"   governador {U}: {'2º turno' if tem_t2 else ('eleito' if any(c['e'] for c in t1['cands']) else 'em apuração')}")
     salvar("governadores.json", gov)
+
+
+# ------------------------------------------------ presidente, 2º turno (resultado final congelado)
+PRES_T2 = os.environ.get("TSE_PRES_T2", "6258")
+def presidente_2t():
+    """Guarda uma cópia do resultado final do 2º turno presidencial (Brasil, estados e exterior)
+    e as fotos dos dois candidatos, para o site não precisar mais ler o TSE."""
+    destino = os.path.join(DATA, "presidente_2t.json")
+    atual = ler("presidente_2t.json", {}) or {}
+    if atual.get("br") and eh_final(atual["br"]) and len(atual) >= 29:
+        log("[presidente] resultado final já salvo"); return
+    novo = {}
+    for uf in ["br"] + UFS + ["zz"]:
+        raw = baixar(f"{BASE}/{PRES_T2}/dados/{uf}/{uf}-c0001-e{int(PRES_T2):06d}-u.json")
+        time.sleep(0.15)
+        if raw:
+            try: novo[uf] = json.loads(raw)
+            except Exception: pass
+    if not novo.get("br"):
+        log("[presidente] TSE não respondeu; mantém o que havia"); return
+    salvar("presidente_2t.json", novo)
+    fotos = os.path.join(RAIZ, "site", "fotos"); os.makedirs(fotos, exist_ok=True)
+    for c, _ in candidatos_do_arquivo(novo["br"]):
+        sq = str(c.get("sqcand") or "")
+        if not sq or os.path.exists(os.path.join(fotos, sq + ".jpeg")): continue
+        for ele in (PRES_T2, "6257"):
+            if baixar(f"{BASE}/{ele}/fotos/br/{sq}.jpeg", os.path.join(fotos, sq + ".jpeg")): break
+    log(f"[presidente] {len(novo)} arquivos salvos ({'final' if eh_final(novo['br']) else 'parcial'})")
 
 # ------------------------------------------------ dados abertos (2022 / 2024)
 def zip_candidatos(ano):
@@ -337,6 +371,7 @@ def main():
     if a.mock:
         gerar_mock(); meta(mock=True); return
     atualizar_2026()
+    presidente_2t()
     if not a.so_2026:
         if a.forcar_base or not os.path.exists(os.path.join(DATA, "senado_2022.json")): senado_2022()
         if a.forcar_base or not os.path.exists(os.path.join(DATA, "municipios", "indice.json")): municipios_2024()

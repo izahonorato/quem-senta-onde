@@ -211,8 +211,8 @@ footer a{color:inherit}
   <h1 class="brand">Quem senta onde</h1>
   <p class="lede">Quem ocupa cada cadeira do Senado, da Câmara e das Assembleias depois do 1º turno de 4 de outubro de 2026, quem já governa cada estado e onde haverá 2º turno, e quem governa as cidades desde 2024. Todos os nomes e partidos vêm dos arquivos oficiais do TSE.</p>
   <div class="meta" id="meta"></div>
-  <a class="aovivo" href="apuracao/"><i aria-hidden="true"></i><span><b>Apuração ao vivo</b> · Presidente, 2º turno</span><span aria-hidden="true">→</span></a>
-  <a class="aovivo" href="projecao/"><span><b>Projeção ao vivo</b> · onde a apuração deve terminar</span><span aria-hidden="true">→</span></a>
+  <a class="aovivo" href="apuracao/"><span><b>Resultado do 2º turno</b> · Presidente eleito</span><span aria-hidden="true">→</span></a>
+  <a class="aovivo" href="projecao/"><span><b>Projeção do 2º turno</b> · quanto acertou</span><span aria-hidden="true">→</span></a>
   <nav class="casas" role="tablist" aria-label="Casa legislativa">
     <button role="tab" data-tab="senado" aria-selected="true">Senado <small>81</small></button>
     <button role="tab" data-tab="camara" aria-selected="false">Câmara <small>513</small></button>
@@ -378,7 +378,7 @@ const is2t = c => /turno/i.test(c&&c.st||"");
 function govState(g){
   if(!g||!g.t1||!g.t1.cands||!g.t1.cands.length)return {tipo:"vazio"};
   const t1=g.t1, t2=g.t2, top=t1.cands[0];
-  if(t2&&t2.final&&t2.cands.length){const w=t2.cands.find(c=>c.e)||t2.cands[0]; return {tipo:"eleito2",w,cands:t2.cands,t1:t1.cands}}
+  if(t2&&(t2.final||t2.eleito)&&t2.cands.length){const w=t2.cands.find(c=>c.e)||t2.cands[0]; return {tipo:"eleito2",w,cands:t2.cands,t1:t1.cands,aberto:!t2.final&&t2.pst!=null&&t2.pst<100,pst:t2.pst,hg:t2.hg,como:t2.como}}
   const fin=t1.cands.filter(is2t);
   if(fin.length>=2||(t1.final&&top.pct<=50))
     return {tipo:"t2",cands:t2&&t2.cands.length?t2.cands:(fin.length>=2?fin:t1.cands.slice(0,2)),t1:t1.cands,parcial2:!!t2,pst:t2&&t2.pst,hg:t2&&t2.hg};
@@ -412,7 +412,8 @@ function govDetail(x){
     return `<article class="gov big" style="--c:${faixaVar(f)}"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag win">${x.tipo==="eleito2"?"Eleito no 2º turno":"Eleito no 1º turno"}</span></header>
       <p class="gname">${esc(x.w.nome)}</p><p class="gsub">${esc(x.w.p)}, ${pinfo(x.w.p)[0]}. ${f>=0?FAIXAS[f]:"Sem classificação"}.</p>
       <p class="gsub"><b>${pc(x.w.pct)}</b> dos votos válidos${x.w.votos?`, ${fmt(x.w.votos)} votos`:""}.</p>
-      <h5>${x.tipo==="eleito2"?"Resultado do 2º turno":"Resultado"}</h5>${duelHTML(x.cands.slice(0,6))}
+      ${x.aberto?`<p class="gsub">${x.como==="conta"?"Já não pode mais ser alcançado: a vantagem é maior que o número de eleitores das urnas que faltam.":"Declarado eleito pelo TSE."} Apuração em andamento, com ${pc(x.pst)} das seções${x.hg?` (TSE, ${esc(x.hg)})`:""}.</p>`:""}
+      <h5>${x.tipo==="eleito2"?(x.aberto?"Parcial do 2º turno":"Resultado do 2º turno"):"Resultado"}</h5>${duelHTML(x.cands.slice(0,6))}
       ${x.tipo==="eleito2"&&x.t1?`<h5>1º turno</h5>${duelHTML(x.t1.slice(0,4))}`:""}</article>`;}
   if(x.tipo==="t2") return `<article class="gov big t2" style="--c:var(--fx)"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag">${x.parcial2?"2º turno em apuração":"2º turno em 25/10"}</span></header>
       <p class="gsub">Nenhum candidato passou de 50% dos votos válidos. ${x.parcial2?(x.pst!=null?`Parcial do 2º turno, com ${pc(x.pst)} das seções apuradas${x.hg?` (TSE, ${esc(x.hg)})`:""}:`:"Parcial do 2º turno:"):"Vão para o 2º turno:"}</p>${duelHTML(x.cands.slice(0,2))}
@@ -492,13 +493,19 @@ async function tseJSON(path){
   const go = async r => { const res = await fetch((r==="direct"?TSE_ELE:"/tse/ele2026")+path,{cache:"no-cache"}); if(!res.ok){const e=new Error(res.status);e.status=res.status;throw e} return res.json(); };
   try{ return await go(tseRoute) }catch(e){ if(e.status===404) throw e; const o=tseRoute==="direct"?"proxy":"direct"; const j=await go(o); tseRoute=o; return j; }
 }
+/* o TSE marca o eleito com e="s" e/ou st="Eleito" / "Matematicamente eleito" */
+function marcadoEleito(o){
+  if(o.e===true || /^s/i.test(String(o.e||""))) return true;
+  const t = semAc(`${o.st||""} ${o.dvt||""}`);
+  return /eleit/.test(t) && !/nao eleit/.test(t);
+}
 function govT2FromTSE(js, ref){
   const out=[];
   (function walk(o,sg){
     if(Array.isArray(o)){o.forEach(x=>walk(x,sg));return}
     if(!o||typeof o!=="object")return;
     const p=o.sg||sg;
-    if("vap" in o && (o.nm||o.nmu)){ out.push({raw:o.nmu||o.nm, sg:p, n:String(o.n||""), votos:numTSE(o.vap), pct:numTSE(o.pvap), e:o.e==="s"||/^eleito/i.test(o.st||""), st:o.st||""}); return }
+    if("vap" in o && (o.nm||o.nmu)){ out.push({raw:o.nmu||o.nm, sg:p, n:String(o.n||""), votos:numTSE(o.vap), pct:numTSE(o.pvap), e:marcadoEleito(o), st:o.st||""}); return }
     for(const k in o){ if(k!=="s"&&k!=="v"&&k!=="e"&&typeof o[k]==="object") walk(o[k],p) }
   })(js.carg||js,"");
   const byName={}; (ref||[]).forEach(c=>byName[semAc(c.nome)]=c);
@@ -507,8 +514,15 @@ function govT2FromTSE(js, ref){
   if(tot && !cands.some(c=>c.pct)) cands.forEach(c=>c.pct=c.votos/tot*100);
   cands.sort((a,b)=>b.votos-a.votos);
   const s=js.s||{}; let pst=numTSE(s.pst??js.pst); const ts=numTSE(s.ts??js.ts), st=numTSE(s.st??js.st); if(!pst&&ts) pst=st/ts*100;
-  const final = js.and==="f" || (js.carg||[]).some(c=>c&&c.and==="f") || cands.some(c=>c.e);
-  return {final, cands, pst, hg:js.hg||""};
+  const final = js.and==="f" || (js.carg||[]).some(c=>c&&c.and==="f") || pst>=100;
+  let eleito = cands.some(c=>c.e), como = eleito ? "tse" : "";
+  /* reserva: a vantagem do 1º colocado já é maior que todos os eleitores das urnas que faltam */
+  if(!eleito && cands.length>=2 && pst>0){
+    const e=js.e||{}, te=numTSE(e.te??js.te), c=numTSE(e.c??js.c), a=numTSE(e.a??js.a);
+    const falta = te && (c+a) ? Math.max(0, te-c-a) : null;
+    if(falta!=null && cands[0].votos-cands[1].votos > falta){ eleito=true; como="conta"; cands[0].e=true; }
+  }
+  return {final, eleito, como, cands, pst, hg:js.hg||""};
 }
 let govTimer=null;
 async function govLive(){

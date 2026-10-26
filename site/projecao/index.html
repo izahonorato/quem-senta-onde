@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Projeção ao vivo — Presidente 2026, 2º turno</title>
-<meta name="description" content="Projeção estatística do resultado final do 2º turno presidencial, recalculada a cada minuto com os dados oficiais do TSE.">
+<title>Projeção do 2º turno — como se saiu</title>
+<meta name="description" content="Quanto a projeção estatística do 2º turno presidencial de 2026 acertou, comparada ao resultado oficial do TSE.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -112,42 +112,52 @@ footer.wrap p{max-width:80ch;margin:0 0 10px}
 code{font-size:.85em;background:var(--soft);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
+<style>
+.live.done i{background:#2E7D4F}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+@media (max-width:760px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.kpi b{display:block;font-family:var(--display);font-weight:800;font-size:clamp(2rem,6vw,2.8rem);line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi span{display:block;margin-top:6px;color:var(--ink2);font-size:.9rem}
+.kpi small{display:block;margin-top:6px;color:var(--ink2);font-size:.8rem}
+table.acc td.ok{color:inherit}
+.err-bar{display:inline-block;height:8px;border-radius:4px;vertical-align:middle;margin-left:6px;background:var(--cx)}
+.nohist{margin-top:18px;background:var(--bg);border:1px dashed var(--line);border-radius:16px;padding:16px 18px;color:var(--ink2)}
+.nohist b{color:var(--ink)}
+.nohist .btn{margin-top:10px}
+</style>
 </head>
 <body>
 <header class="top wrap">
-  <a class="back" href="../">← Quem senta onde</a><a class="back" href="../apuracao/">Apuração ao vivo</a>
-  <h1 class="brand">Projeção ao vivo</h1>
-  <p class="lede">Uma estimativa de como o 2º turno presidencial vai terminar, recalculada a cada minuto. Ela junta o que já foi apurado com o voto de cada cidade e estado no 1º turno, para prever as urnas que ainda faltam. <b>Não é o resultado oficial.</b></p>
+  <a class="back" href="../">← Quem senta onde</a><a class="back" href="../apuracao/">Resultado do 2º turno</a>
+  <h1 class="brand">Projeção do 2º turno</h1>
+  <p class="lede">Na noite de 25 de outubro, esta página estimou minuto a minuto como o 2º turno presidencial iria terminar. Agora que o TSE totalizou todas as urnas, dá para medir quanto ela acertou.</p>
   <div class="statusbar" role="status" aria-live="polite">
-    <span class="live" id="live"><i></i><span id="liveTxt">Preparando…</span></span>
+    <span class="live done" id="live"><i></i><span id="liveTxt">Carregando…</span></span>
     <span id="updTxt"></span>
-    <span class="sp"></span>
-    <span id="nextTxt"></span>
-    <button class="btn" id="refresh" type="button">Recalcular agora</button>
   </div>
-  <div class="banner" id="banner" hidden></div>
+  <div class="banner warn" id="banner" hidden></div>
 </header>
 
 <main class="wrap">
   <div class="score">
-    <p class="kicker" id="kicker">Projeção do resultado final · votos válidos</p>
+    <p class="kicker">Resultado oficial · votos válidos</p>
     <div class="duo" id="duo"></div>
-    <div class="range" id="range" aria-hidden="true"></div>
-    <div class="rangecap"><span id="rangeL"></span><span>linha = 50%</span></div>
     <p class="verdict" id="verdict"></p>
-    <div class="stats" id="stats"></div>
+    <div class="kpis" id="kpis"></div>
+    <div id="nohist"></div>
   </div>
 
-  <section class="sec">
-    <h2>Projeção × apurado</h2>
-    <p>A linha cheia é a projeção, com a faixa de 95% em volta. A tracejada é o percentual que o TSE mostrava naquele momento. No começo da noite as duas costumam ficar distantes: as urnas não chegam todas ao mesmo tempo, e a projeção tenta corrigir isso.</p>
+  <section class="sec" id="secChart">
+    <h2>Projeção × apurado × resultado</h2>
+    <p>A linha cheia é a projeção, com a faixa de 95% em volta. A tracejada é o percentual que o TSE mostrava naquele momento. A linha horizontal é o resultado final.</p>
     <div class="chart" id="chart"></div>
   </section>
 
-  <section class="sec">
-    <h2>Por estado</h2>
-    <p>Quanto cada estado já apurou e quanto a projeção espera no fim. Estados com pouca apuração dependem mais do 1º turno.</p>
-    <div class="tblwrap"><table class="uft" id="uft"></table></div>
+  <section class="sec" id="secTable">
+    <h2>Momento a momento</h2>
+    <p>O que a projeção dizia em cada etapa da apuração e quanto errou em relação ao resultado final. Erro em pontos percentuais (p.p.) da fatia de votos válidos.</p>
+    <div class="tblwrap"><table class="uft acc" id="acc"></table></div>
   </section>
 
   <section class="sec">
@@ -172,8 +182,8 @@ code{font-size:.85em;background:var(--soft);padding:1px 5px;border-radius:4px;ov
       <ul>
         <li>O modelo trabalha com cidades e estados, não com seções eleitorais. Se dentro de uma mesma cidade os bairros de um lado chegam antes, ele só percebe aos poucos.</li>
         <li>Não usa pesquisas eleitorais.</li>
-        <li>A projeção aparece a partir de 1% das seções apuradas e é pouco confiável abaixo de 3%.</li>
-        <li>Não é probabilidade de vitória nem resultado. Só o TSE declara quem foi eleito.</li>
+        <li>A projeção aparecia a partir de 1% das seções apuradas e era pouco confiável abaixo de 3%.</li>
+        <li>Não era probabilidade de vitória nem resultado. Só o TSE declara quem foi eleito.</li>
       </ul>
       <p>Inspirado no método publicado por <a href="https://github.com/rodrigomahlmeister/projecao-2026-metodo" target="_blank" rel="noopener">Rodrigo Mahlmeister</a>, que trabalha seção por seção e é mais preciso. Esta página é uma versão simplificada, feita do zero, e não usa o código dele.</p>
     </div>
@@ -181,331 +191,162 @@ code{font-size:.85em;background:var(--soft);padding:1px 5px;border-radius:4px;ov
 </main>
 
 <footer class="wrap">
-  <p><b>Fonte.</b> Arquivos públicos do TSE em <a href="https://resultados.tse.jus.br" target="_blank" rel="noopener">resultados.tse.jus.br</a>: 1º turno (eleição 6257) e 2º turno (eleição <code id="eleCode">6258</code>), cargo Presidente, por estado, exterior e nas 115 maiores cidades. A conta é feita no seu navegador.</p>
-  <p>Endereços úteis: <code>?demo=1</code> mostra uma simulação com candidatos fictícios.</p>
+  <p><b>Fonte.</b> Resultado final: Tribunal Superior Eleitoral (eleição 6258, cargo Presidente), cópia salva em <code>data/presidente_2t.json</code>. Leituras da projeção: registradas por esta página durante a noite da apuração (<code>data/historico_2t.json</code>).</p>
+  <p>A projeção era uma estimativa estatística, não um resultado. O resultado só se torna definitivo com a diplomação pela Justiça Eleitoral.</p>
 </footer>
 
 <script>
 (()=>{
-/* ---------- Configuração ---------- */
-const Q = new URLSearchParams(location.search);
-const DEMO = Q.has("demo");
-const T1 = "6257", T2 = (Q.get("eleicao")||"6258").replace(/\D/g,"")||"6258";
-const TSE = "https://resultados.tse.jus.br/oficial", PROXY = "/tse";
-const CYCLE = DEMO ? 6000 : 60000;
-const pad6 = s => String(s).padStart(6,"0");
-const UFS = {AC:"Acre",AL:"Alagoas",AP:"Amapá",AM:"Amazonas",BA:"Bahia",CE:"Ceará",DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",MT:"Mato Grosso",MS:"Mato Grosso do Sul",MG:"Minas Gerais",PA:"Pará",PB:"Paraíba",PR:"Paraná",PE:"Pernambuco",PI:"Piauí",RJ:"Rio de Janeiro",RN:"Rio Grande do Norte",RS:"Rio Grande do Sul",RO:"Rondônia",RR:"Roraima",SC:"Santa Catarina",SP:"São Paulo",SE:"Sergipe",TO:"Tocantins",ZZ:"Exterior"};
-/* maiores cidades e capitais: [UF, código TSE do município, nome] */
-const CITIES = [["AC","01392","Rio Branco"],["AL","27855","Maceió"],["AM","02534","Manacapuru"],["AM","02550","Manaus"],["AP","06050","Macapá"],["BA","35971","Itabuna"],["BA","36854","Lauro de Freitas"],["BA","38490","Salvador"],["BA","34134","Camaçari"],["BA","39659","Vitória da Conquista"],["BA","35734","Ilhéus"],["BA","35157","Feira de Santana"],["BA","36692","Juazeiro"],["CE","13730","Caucaia"],["CE","13897","Fortaleza"],["CE","15598","Sobral"],["CE","15857","Maracanaú"],["CE","14478","Juazeiro do Norte"],["ES","57037","Vila Velha"],["ES","57053","Vitória"],["ES","56995","Serra"],["GO","92215","Anápolis"],["GO","92274","Aparecida de Goiânia"],["GO","93734","Goiânia"],["GO","94455","Luziânia"],["GO","95710","Rio Verde"],["MA","08036","Imperatriz"],["MA","08893","São José de Ribamar"],["MA","09377","Timon"],["MA","09210","São Luís"],["MG","41238","Belo Horizonte"],["MG","54038","Uberlândia"],["MG","51551","Santa Luzia"],["MG","54011","Uberaba"],["MG","47333","Juiz de Fora"],["MG","48658","Montes Claros"],["MG","41335","Betim"],["MG","43710","Contagem"],["MG","45535","Governador Valadares"],["MS","90514","Campo Grande"],["MS","90735","Dourados"],["MT","91677","Várzea Grande"],["MT","90670","Cuiabá"],["MT","91510","Rondonópolis"],["PA","05355","Santarém"],["PA","04472","Castanhal"],["PA","04278","Belém"],["PA","04839","Marabá"],["PB","20516","João Pessoa"],["PB","19810","Campina Grande"],["PE","25313","Recife"],["PE","23817","Caruaru"],["PE","24570","Jaboatão dos Guararapes"],["PE","23574","Cabo de Santo Agostinho"],["PE","25216","Petrolina"],["PI","12190","Teresina"],["PR","74934","Cascavel"],["PR","76910","Maringá"],["PR","75833","Guarapuava"],["PR","75353","Curitiba"],["PR","78859","São José dos Pinhais"],["RJ","59250","Volta Redonda"],["RJ","58670","Nova Friburgo"],["RJ","58190","Campos dos Goytacazes"],["RJ","58696","Nova Iguaçu"],["RJ","58335","Duque de Caxias"],["RJ","60011","Rio de Janeiro"],["RJ","58041","Belford Roxo"],["RJ","58971","São Gonçalo"],["RJ","58530","Maricá"],["RJ","59153","Teresópolis"],["RJ","58653","Niterói"],["RN","17612","Natal"],["RN","17590","Mossoró"],["RN","17795","Parnamirim"],["RO","00035","Porto Velho"],["RR","03018","Boa Vista"],["RS","85898","Canoas"],["RS","88013","Porto Alegre"],["RS","85995","Caxias do Sul"],["RS","88412","Santa Maria"],["RS","87912","Pelotas"],["RS","87858","Passo Fundo"],["RS","88153","Rio Grande"],["RS","86835","Gravataí"],["RS","89630","Viamão"],["SC","80810","Chapecó"],["SC","81051","Florianópolis"],["SC","82333","Palhoça"],["SE","31054","Aracaju"],["SE","31950","Nossa Senhora do Socorro"],["SP","71072","São Paulo"],["SP","62910","Campinas"],["SP","68756","Piracicaba"],["SP","70971","São José do Rio Preto"],["SP","62138","Barueri"],["SP","67130","Mogi das Cruzes"],["SP","69698","Ribeirão Preto"],["SP","70777","São Caetano do Sul"],["SP","70572","Santo André"],["SP","70998","São José dos Campos"],["SP","70750","São Bernardo do Campo"],["SP","67890","Osasco"],["SP","69213","Praia Grande"],["SP","64017","Embu das Artes"],["SP","66893","Mauá"],["SP","62197","Bauru"],["SP","66397","Limeira"],["SP","70718","Santos"],["SP","71455","Sorocaba"],["SP","63770","Diadema"],["SP","70793","São Carlos"],["SP","71498","Sumaré"],["SP","64777","Guarulhos"],["TO","73440","Palmas"]];
-$("eleCode").textContent = T2;
-
-/* ---------- Utilidades ---------- */
-function $(id){ return document.getElementById(id); }
+const TSE = "https://resultados.tse.jus.br/oficial", ELE = "6258";
+const $ = id => document.getElementById(id);
 const num = x => { if(x==null||x==="") return 0; if(typeof x==="number") return x; const s=String(x).trim(); return s.includes(",") ? +s.replace(/\./g,"").replace(",",".") || 0 : +s || 0; };
 const fmt = n => Math.round(n).toLocaleString("pt-BR");
 const pct = (n,d=1) => n.toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d})+"%";
+const pp = (n,d=2) => (n>0?"+":n<0?"−":"")+Math.abs(n).toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d});
 const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const LOWER = new Set(["da","de","do","das","dos","e"]);
 const title = s => String(s||"").toLowerCase().split(/\s+/).map((w,i)=>i&&LOWER.has(w)?w:w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
-const store = {
-  get(k){try{const v=localStorage.getItem("proj:"+k);return v?JSON.parse(v):null}catch(e){return null}},
-  set(k,v){try{localStorage.setItem("proj:"+k,JSON.stringify(v))}catch(e){}}
-};
+const ls = k => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null }catch(e){ return null } };
 
-/* ---------- Leitura dos arquivos do TSE ---------- */
-function findCands(o, sg, out){
-  if(Array.isArray(o)){ o.forEach(x=>findCands(x,sg,out)); return; }
-  if(!o || typeof o!=="object") return;
-  const party = o.sg || sg;
-  if(("vap" in o) && (o.nm || o.nmu)){ out.push({n:String(o.n||""), sq:o.sqcand?String(o.sqcand):"", nm:title(o.nmu||o.nm), sg:o.sg||party||"", vap:num(o.vap)}); return; }
-  for(const k in o){ if(k==="s"||k==="v"||k==="e") continue; if(typeof o[k]==="object") findCands(o[k],party,out); }
-}
-const pick = (d,g,k) => d && d[g] && typeof d[g]==="object" && k in d[g] ? d[g][k] : d ? d[k] : undefined;
-function summarize(d){
-  const cands=[]; findCands(d.carg||d.cand||d,"",cands);
-  const votes={}; cands.forEach(c=>votes[c.n]=(votes[c.n]||0)+c.vap);
-  const vv = num(pick(d,"v","vv")) || cands.reduce((a,c)=>a+c.vap,0);
-  const ts=num(pick(d,"s","ts")), st=num(pick(d,"s","st"));
-  let pst=num(pick(d,"s","pst")); if(!pst && ts) pst=st/ts*100;
-  return {votes, cands, vv, ts, st, pst, hg:d.hg||d.ht||"", dg:d.dg||d.dt||""};
-}
-let route = store.get("route") || "direct";
-async function getFile(ele, uf, key){
-  if(DEMO) return demoFile(ele, key);
-  const url = b => `${b}/ele2026/${ele}/dados/${uf}/${key}-c0001-e${pad6(ele)}-u.json`;
-  const go = async r => { const res = await fetch(url(r==="direct"?TSE:PROXY), {cache:"no-cache"}); if(!res.ok){ const e=new Error(res.status); e.status=res.status; throw e; } return summarize(await res.json()); };
-  try { return await go(route); }
-  catch(e){ if(e.status===404) throw e; const other = route==="direct"?"proxy":"direct"; const j = await go(other); route=other; store.set("route",route); return j; }
-}
-async function pool(items, fn, n=6){
-  let i=0; const out=new Array(items.length);
-  await Promise.all(Array.from({length:n}, async()=>{ while(i<items.length){ const k=i++; try{ out[k]=await fn(items[k]); }catch(e){ out[k]=null; } } }));
+/* ---------- Resultado final ---------- */
+function cands(d){
+  const out=[];
+  (function walk(o,sg){
+    if(Array.isArray(o)){ o.forEach(x=>walk(x,sg)); return; }
+    if(!o||typeof o!=="object") return;
+    const p=o.sg||sg;
+    if("vap" in o && (o.nm||o.nmu)){ out.push({n:String(o.n||""), sq:o.sqcand?String(o.sqcand):"", nm:title(o.nmu||o.nm), sg:p||"", vap:num(o.vap), pvap:num(o.pvap)}); return; }
+    for(const k in o){ if(k!=="s"&&k!=="v"&&k!=="e"&&typeof o[k]==="object") walk(o[k],p); }
+  })(d.carg||d,"");
   return out;
 }
-const UF_KEYS = Object.keys(UFS).map(u=>u.toLowerCase());
-const CITY_KEYS = CITIES.map(([u,c])=>({uf:u.toLowerCase(), key:u.toLowerCase()+c, name:c}));
-CITIES.forEach(([u,c,n],i)=>CITY_KEYS[i].name=n);
-
-/* ---------- 1º turno: referência (baixada uma vez e guardada) ---------- */
-async function loadBase(){
-  const ck = "base:"+T1+(DEMO?":demo":"")+":v1";
-  const c = store.get(ck); if(c && c.n > 20) return c.data;
-  const jobs = [...UF_KEYS.map(u=>({uf:u,key:u})), ...CITY_KEYS];
-  let done=0;
-  const res = await pool(jobs, async j=>{ const s = await getFile(T1, j.uf, j.key); done++; $("liveTxt").textContent=`Lendo o 1º turno (${done}/${jobs.length})…`; return s; });
-  const data={}; jobs.forEach((j,i)=>{ if(res[i]) data[j.key]={votes:res[i].votes, vv:res[i].vv, ts:res[i].ts}; });
-  if(Object.keys(data).length>20) store.set(ck,{n:Object.keys(data).length,data});
-  return data;
+async function loadFinal(){
+  try{ const r=await fetch("../data/presidente_2t.json",{cache:"no-cache"}); if(r.ok){ const j=await r.json(); if(j.br) return j.br; } }catch(e){}
+  for(const base of [TSE, "/tse"]){
+    try{ const r=await fetch(`${base}/ele2026/${ELE}/dados/br/br-c0001-e00${ELE}-u.json`,{cache:"no-cache"}); if(r.ok) return await r.json(); }catch(e){}
+  }
+  return null;
+}
+async function loadHist(){
+  try{ const r=await fetch("../data/historico_2t.json",{cache:"no-cache"}); if(r.ok){ const j=await r.json(); if(j.proj&&j.proj.length) return {pts:j.proj, from:"file"}; } }catch(e){}
+  const h = ls("proj:hist:"+ELE);
+  return {pts: h||[], from: h&&h.length ? "local" : "none"};
 }
 
-/* ---------- Modelo ---------- */
-/* ===== Modelo de projeção (estratos: cidades grandes + resto de cada estado) =====
-   Entrada: lista de estratos {key, uf, base:{V1,A1,B1,O1}, live:{a,b,p}}
-     base: votos do 1º turno no estrato — V1 válidos, A1 e B1 dos dois finalistas, O1 dos demais
-     live: votos já apurados no 2º turno — a e b dos finalistas, p = fração das seções totalizadas
-   Saída: votos projetados de A e B, intervalo de 95% para a fatia de A, parâmetros estimados. */
-function projetar(strata, opt = {}) {
-  const K_PRIOR = opt.kPrior ?? 0.05;      // a referência vale 5% do eleitorado do estrato
-  const SIG_IN = opt.sigIn ?? 0.025;       // heterogeneidade dentro do estrato (ordem de apuração)
-  const SIG_SYS = opt.sigSys ?? 0.012;     // erro comum a todos os estratos ainda não apurados
-  const S = strata.filter(s => s.base && s.base.V1 > 0);
-  // 1) comparecimento relativo: votos válidos no 2º turno / no 1º turno, nas partes já apuradas
-  let num = 0, den = 0;
-  S.forEach(s => { if (s.live.p > 0.02) { num += s.live.a + s.live.b; den += s.live.p * s.base.V1; } });
-  const rNat = den > 0 ? Math.min(1.25, Math.max(0.75, num / den)) : 1;
-  // 2) transferência: fatia de A no 2º turno = a1 + tau * o1 (a1, o1 = fatias no 1º turno)
-  let sxy = 0, sxx = 0, n = 0;
-  S.forEach(s => {
-    const v = s.live.a + s.live.b; if (v < 200) return;
-    const a1 = s.base.A1 / s.base.V1, o1 = s.base.O1 / s.base.V1, obs = s.live.a / v;
-    sxy += v * o1 * (obs - a1); sxx += v * o1 * o1; n++;
-  });
-  const tau = sxx > 0 ? Math.min(1.5, Math.max(-0.5, sxy / sxx)) : 0.5;
-  // dispersão do modelo entre estratos
-  let sr = 0, sw = 0;
-  S.forEach(s => {
-    const v = s.live.a + s.live.b; if (v < 200) return;
-    const prior = s.base.A1 / s.base.V1 + tau * s.base.O1 / s.base.V1;
-    sr += v * (s.live.a / v - prior) ** 2; sw += v;
-  });
-  const sigRes = sw > 0 ? Math.max(0.01, Math.sqrt(sr / sw)) : 0.05;
-  // 3) cada estrato: apurado + projeção do que falta
-  let A = 0, B = 0, Ac = 0, Bc = 0, R = 0, varInd = 0;
-  const out = S.map(s => {
-    const { V1, A1, O1 } = s.base, { a, b, p } = s.live, v = a + b;
-    const rHat = p > 0.02 && v > 0 ? v / (p * V1) : rNat, w = p / (p + 0.1);
-    const r = w * rHat + (1 - w) * rNat;
-    const rem = Math.max(0, (1 - p) * V1 * r);
-    const prior = Math.min(0.99, Math.max(0.01, A1 / V1 + tau * O1 / V1));
-    const k = K_PRIOR * V1;
-    const sh = v > 0 ? (a + k * prior) / (v + k) : prior;
-    const sig2 = (k / (v + k)) * sigRes ** 2 + SIG_IN ** 2;
-    A += a + sh * rem; B += b + (1 - sh) * rem; Ac += a; Bc += b; R += rem; varInd += rem * rem * sig2;
-    return { key: s.key, uf: s.uf, a: a + sh * rem, b: b + (1 - sh) * rem, rem, sh };
-  });
-  const T = A + B;
-  const sd = T > 0 ? Math.sqrt(varInd + (SIG_SYS * R) ** 2) / T : 0;
-  const pa = T > 0 ? A / T : 0;
-  return { A, B, T, pa, lo: pa - 1.96 * sd, hi: pa + 1.96 * sd, sd, tau, rNat, sigRes, rem: R, counted: Ac + Bc,
-           pc: Ac + Bc > 0 ? Ac / (Ac + Bc) : 0, strata: out, nFit: n };
-}
-
-
-/* ---------- Estado ---------- */
-const state = {base:null, live:{}, br:null, A:null, B:null, proj:null, err:null, last:0};
-function finalists(br){
-  const c = [...br.cands].sort((a,b)=>b.vap-a.vap || a.n.localeCompare(b.n,"pt",{numeric:true})).slice(0,2);
-  c.sort((a,b)=>a.n.localeCompare(b.n,"pt",{numeric:true}));     // ordem fixa pelo número
-  return c;
-}
-const colorOf = (c,i) => /^PT\b/.test(c.sg) ? "var(--c0)" : /^PL\b/.test(c.sg) ? "var(--c1)" : i ? "var(--c1)" : "var(--c0)";
-function buildStrata(){
-  const base=state.base, live=state.live, A=state.A.n, B=state.B.n, out=[];
-  const mk = (b, l) => ({V1:b.vv, A1:b.votes[A]||0, B1:b.votes[B]||0, O1:Math.max(0,b.vv-(b.votes[A]||0)-(b.votes[B]||0)), ts:b.ts, a:l.votes[A]||0, b:l.votes[B]||0, st:l.st, lts:l.ts});
-  UF_KEYS.forEach(u=>{
-    if(!base[u] || !live[u]) return;
-    const rest = mk(base[u], live[u]);
-    CITY_KEYS.filter(c=>c.uf===u && base[c.key] && live[c.key]).forEach(c=>{
-      const s = mk(base[c.key], live[c.key]);
-      ["V1","A1","B1","O1","ts","a","b","st","lts"].forEach(k=>rest[k]=Math.max(0,rest[k]-s[k]));
-      out.push({key:c.key, uf:u.toUpperCase(), name:c.name, s});
-    });
-    out.push({key:u, uf:u.toUpperCase(), name:"resto", s:rest});
-  });
-  return out.map(o=>{ const s=o.s, ts=s.lts||s.ts; return {key:o.key, uf:o.uf, name:o.name, base:{V1:s.V1,A1:s.A1,B1:s.B1,O1:s.O1}, live:{a:s.a, b:s.b, p: ts? Math.min(1,s.st/ts):0}}; });
-}
-
-/* ---------- Ciclo ---------- */
-let timer, nextAt=0;
-async function cycle(){
-  clearTimeout(timer);
-  try{
-    if(!state.base){ state.base = await loadBase(); }
-    if(!state.base || Object.keys(state.base).length<20) throw Object.assign(new Error("base"),{kind:"base"});
-    const br = await getFile(T2,"br","br");
-    state.br = br;
-    if(!state.A){ const f=finalists(br); if(f.length<2) throw new Error("cands"); [state.A,state.B]=f; }
-    const jobs = [...UF_KEYS.map(u=>({uf:u,key:u})), ...CITY_KEYS.filter(c=>state.base[c.key])];
-    const res = await pool(jobs, j=>getFile(T2,j.uf,j.key));
-    jobs.forEach((j,i)=>{ if(res[i]) state.live[j.key]=res[i]; });
-    state.err=null; state.last=Date.now();
-    if(br.pst>=1 && br.vv>0){
-      state.proj = projetar(buildStrata());
-      const h = store.get(histKey())||[], last=h[h.length-1];
-      if(last && br.pst<last.x) h.length=0;
-      if(!last || last.x!==br.pst){ h.push({x:br.pst, pa:state.proj.pa, lo:state.proj.lo, hi:state.proj.hi, pc:state.proj.pc}); store.set(histKey(), h.slice(-500)); }
-    } else state.proj=null;
-  }catch(e){ state.err = e.kind==="base" ? "base" : e.status===404 ? 404 : "net"; }
-  render();
-  const done = state.br && state.br.pst>=100;
-  const wait = done && !DEMO ? 300000 : CYCLE; nextAt=Date.now()+wait; timer=setTimeout(cycle, wait);
-}
-const histKey = () => "hist:"+T2+(DEMO?":demo":"");
-
-/* ---------- Fotos ---------- */
+/* ---------- Fotos: cópia local, depois TSE, depois iniciais ---------- */
 const initials = nm => nm.split(" ").filter(w=>w.length>2).map(w=>w[0]).slice(0,2).join("").toUpperCase();
-function photo(c){
-  const img = !DEMO && c.sq ? `<img src="${TSE}/ele2026/${T2}/fotos/br/${c.sq}.jpeg" data-alt="${TSE}/ele2026/${T1}/fotos/br/${c.sq}.jpeg" alt="" loading="lazy">` : "";
-  return `<span class="ph" aria-hidden="true">${esc(initials(c.nm))}${img}</span>`;
-}
+const photo = c => `<span class="ph" aria-hidden="true">${esc(initials(c.nm))}${c.sq?`<img src="../fotos/${c.sq}.jpeg" data-alt="${TSE}/ele2026/${ELE}/fotos/br/${c.sq}.jpeg" alt="" loading="lazy">`:""}</span>`;
 document.addEventListener("error", e=>{ const im=e.target; if(!(im instanceof HTMLImageElement)||!im.closest(".ph")) return; if(im.dataset.alt){ const a=im.dataset.alt; im.dataset.alt=""; im.src=a; } else im.remove(); }, true);
+const colorOf = (c,i) => /^PT\b/.test(c.sg) ? "var(--c0)" : /^PL\b/.test(c.sg) ? "var(--c1)" : i ? "var(--c1)" : "var(--c0)";
+
+/* ---------- Métricas de acerto ----------
+   Cada leitura guardou: x = % das seções apuradas, pa = projeção da fatia do candidato de menor número,
+   lo/hi = faixa de 95%, pc = fatia apurada naquele momento. */
+function metrics(pts, finalA){
+  const P = pts.filter(p=>p.x<99.5 && p.x>=1);
+  if(!P.length) return null;
+  const ePj = P.map(p=>Math.abs(p.pa-finalA)*100), eAp = P.map(p=>Math.abs(p.pc-finalA)*100);
+  const mean = a => a.reduce((s,v)=>s+v,0)/a.length;
+  const winA = finalA>0.5;
+  const okW = P.map(p=>(p.pa>0.5)===winA), okB = P.map(p=>finalA>=p.lo && finalA<=p.hi);
+  let since=null; for(let i=P.length-1;i>=0;i--){ if(okW[i]) since=P[i].x; else break; }
+  const after3 = P.filter(p=>p.x>=3);
+  return {n:P.length, x0:P[0].x, x1:P[P.length-1].x,
+    maeP:mean(ePj), maeA:mean(eAp),
+    maeP3: after3.length? mean(after3.map(p=>Math.abs(p.pa-finalA)*100)) : null,
+    win: okW.filter(Boolean).length/P.length*100, band: okB.filter(Boolean).length/P.length*100, since};
+}
+const CHECK = [1,2,3,5,10,20,30,50,75,90];
+function checkpoints(pts){
+  const P = pts.filter(p=>p.x<99.5);
+  return CHECK.map(c=>P.find(p=>p.x>=c && p.x<c*1.6+2)).map((p,i)=>p?{c:CHECK[i],...p}:null).filter(Boolean);
+}
 
 /* ---------- Desenho ---------- */
-function render(){
-  renderStatus();
-  const br=state.br, P=state.proj;
-  if(!state.A){ $("duo").innerHTML=`<p style="color:var(--ink2);margin:0">Aguardando os dados do TSE…</p>`; return; }
-  const C=[state.A,state.B].map((c,i)=>({...c, col:colorOf(c,i)}));
-  const shareA = P ? P.pa*100 : null, loA = P ? P.lo*100 : null, hiA = P ? P.hi*100 : null;
-  const rows = C.map((c,i)=>{
-    const proj = P ? (i? 100-shareA : shareA) : null;
-    const lo = P ? (i? 100-hiA : loA) : null, hi = P ? (i? 100-loA : hiA) : null;
-    const now = br && br.vv ? (br.votes[c.n]||0)/((br.votes[C[0].n]||0)+(br.votes[C[1].n]||0)||1)*100 : null;
-    return {c, proj, lo, hi, now};
-  });
-  const order = P ? [...rows].sort((a,b)=>b.proj-a.proj) : rows;
-  $("duo").innerHTML = order.map((r,i)=>`
-    <div class="cand${i===0&&P?" first":""}" style="--cc:${r.c.col}">
-      ${photo(r.c)}
-      <div class="who">
-        ${i===0&&P?`<span class="tag">Projetado à frente</span>`:""}
-        <span class="nm">${esc(r.c.nm)}</span>
-        <span class="pt">${esc(r.c.sg)} · ${esc(r.c.n)}</span>
-        <span class="now">${r.now!=null?`Apurado agora: ${pct(r.now,2)}`:"Aguardando apuração"}</span>
-      </div>
-      <div class="pc"><b>${P?pct(r.proj):"—"}</b><span>${P?`entre ${pct(Math.max(0,r.lo))} e ${pct(Math.min(100,r.hi))}`:""}</span></div>
-    </div>`).join("");
-  // faixa
-  if(P){
-    const lead = order[0];
-    const toX = v => Math.min(100,Math.max(0,(v-35)/30*100));      // eixo de 35% a 65%
-    $("range").innerHTML = `<div class="axis"></div>
-      ${[40,45,50,55,60].map(v=>`<span class="lab" style="left:${toX(v)}%">${v}%</span>`).join("")}
-      <div class="band" style="--bc:${lead.c.col};left:${toX(lead.lo)}%;width:${toX(lead.hi)-toX(lead.lo)}%"></div>
-      <div class="pt0" style="--bc:${lead.c.col};left:${toX(lead.proj)}%"></div><div class="half"></div>`;
-    $("rangeL").textContent = `Faixa de 95% para ${lead.c.nm}`;
-    const certain = lead.lo > 50;
-    const early = br.pst < 3;
-    $("verdict").innerHTML = early
-      ? `Com só <b>${pct(br.pst,2)}</b> das seções apuradas, a projeção ainda é <b>pouco confiável</b>.`
-      : certain
-        ? `Com <b>${pct(br.pst,2)}</b> das seções apuradas, a projeção indica <b>${esc(lead.c.nm)}</b> à frente, com a faixa de 95% inteira acima de 50%.`
-        : `Com <b>${pct(br.pst,2)}</b> das seções apuradas, a disputa ainda está <b>dentro da margem</b>: a faixa de 95% passa pelos 50%.`;
-    const dv = Math.abs(P.A-P.B);
-    $("stats").innerHTML = [
-      [pct(br.pst,2),"seções apuradas"],
-      [fmt(P.counted),"votos válidos apurados"],
-      [fmt(P.rem),"votos válidos ainda esperados"],
-      [fmt(dv),"diferença projetada (votos)"]
-    ].map(([v,l])=>`<div><b>${v}</b><span>${l}</span></div>`).join("");
-  } else {
-    $("range").innerHTML=""; $("rangeL").textContent="";
-    $("verdict").innerHTML = br && br.pst>0 ? `A projeção aparece quando <b>1% das seções</b> estiver apurado (agora: ${pct(br.pst,2)}).` : `A projeção começa depois que as urnas fecham, às 17h de Brasília, quando 1% das seções estiver apurado.`;
-    $("stats").innerHTML="";
-  }
-  renderChart(C); renderTable(C);
-}
-function renderStatus(){
-  const l=$("live"); l.className="live "+(state.err?"err":state.last?"on":"");
-  $("liveTxt").textContent = DEMO ? "Simulação (candidatos fictícios)" : state.err ? "Sem resposta do TSE" : state.last ? "Ao vivo" : $("liveTxt").textContent;
-  $("updTxt").textContent = state.br && state.br.hg ? `Dados do TSE: ${state.br.dg} às ${state.br.hg}` : "";
-  const b=$("banner");
-  if(DEMO){ b.hidden=false; b.className="banner warn"; b.innerHTML=`<b>Modo simulação.</b> Candidatos e números inventados para mostrar como a página funciona. A simulação recomeça a cada 4 minutos.`; }
-  else if(state.err==="base"){ b.hidden=false; b.className="banner warn"; b.innerHTML=`<b>Não foi possível ler o 1º turno no TSE.</b> Sem ele não há projeção. A página tenta de novo sozinha.`; }
-  else if(state.err){ b.hidden=false; b.className="banner warn"; b.innerHTML = state.err===404 ? `<b>O TSE ainda não publicou os arquivos do 2º turno.</b> A página tenta de novo sozinha.` : `<b>Não foi possível falar com o TSE agora.</b> Mostrando a última projeção calculada.`; }
-  else b.hidden=true;
-}
-function tick(){ const s=Math.max(0,Math.round((nextAt-Date.now())/1000)); $("nextTxt").textContent = nextAt? `próximo cálculo em ${s}s`:""; }
-setInterval(tick,1000);
+async function main(){
+  const d = await loadFinal();
+  if(!d){ $("liveTxt").textContent="Não foi possível carregar o resultado"; $("live").className="live err"; return; }
+  const all = cands(d).sort((a,b)=>b.vap-a.vap).slice(0,2);
+  const byNum = [...all].sort((a,b)=>a.n.localeCompare(b.n,"pt",{numeric:true}));   // A = menor número, como na projeção
+  const C = byNum.map((c,i)=>({...c, col:colorOf(c,i)}));
+  const A=C[0], B=C[1], tot=A.vap+B.vap, finalA=A.vap/tot;
+  const s=d.s||{}, pst=num(s.pst||d.pst);
+  $("liveTxt").textContent = pst>=100 ? "Resultado final" : "Resultado parcial";
+  $("updTxt").textContent = d.hg ? `Totalização do TSE: ${d.dg||""} às ${d.hg}` : "";
 
-function renderChart(C){
-  const h = store.get(histKey())||[];
-  if(h.length<2){ $("chart").innerHTML=`<div class="empty">O gráfico aparece a partir do segundo cálculo da projeção.</div>`; return; }
-  const W=Math.max(340,Math.min(640,($("chart").clientWidth||640)-28)),H=W<480?220:250,L=36,R=12,T=10,B=26, col=C[0].col;
-  const vals=h.flatMap(p=>[p.lo*100,p.hi*100,p.pc*100]);
+  const H = await loadHist(), pts = (H.pts||[]).filter(p=>typeof p.pa==="number"), M = metrics(pts, finalA);
+  const last = pts.filter(p=>p.x<99.5).slice(-1)[0];
+
+  const win = [...C].sort((a,b)=>b.vap-a.vap);
+  $("duo").innerHTML = win.map((c,i)=>{
+    const sh = c.vap/tot*100, first = pts.find(p=>p.x>=1);
+    const pj = first ? (c===A ? first.pa : 1-first.pa)*100 : null;
+    return `<div class="cand${i===0?" first":""}" style="--cc:${c.col}">
+      ${photo(c)}
+      <div class="who">${i===0?`<span class="tag">Presidente eleito</span>`:""}
+        <span class="nm">${esc(c.nm)}</span><span class="pt">${esc(c.sg)} · ${esc(c.n)}</span>
+        <span class="now">${fmt(c.vap)} votos${pj!=null?` · a projeção dizia ${pct(pj)} com ${pct(first.x)} apurado`:""}</span></div>
+      <div class="pc"><b>${pct(sh,2)}</b><span>${i===0?"venceu":"dos votos válidos"}</span></div></div>`;
+  }).join("");
+
+  if(M){
+    const W = win[0];
+    $("verdict").innerHTML = M.since!=null && M.since<=M.x0+0.01
+      ? `A projeção apontou <b>${esc(W.nm)}</b> como vencedor em todas as ${M.n} leituras registradas, desde ${pct(M.x0,2)} das seções apuradas.`
+      : M.since!=null
+        ? `A projeção apontou <b>${esc(W.nm)}</b> como vencedor de forma definitiva a partir de <b>${pct(M.since,2)}</b> das seções apuradas.`
+        : `A projeção não apontou o vencedor correto na última leitura registrada.`;
+    $("kpis").innerHTML = `
+      <div class="kpi"><b>${pct(M.win,0)}</b><span>das leituras apontaram o vencedor certo</span><small>${M.n} leituras, de ${pct(M.x0,1)} a ${pct(M.x1,1)} apurado</small></div>
+      <div class="kpi"><b>${M.maeP.toLocaleString("pt-BR",{maximumFractionDigits:2,minimumFractionDigits:2})} p.p.</b><span>erro médio da projeção</span><small>O percentual apurado errava em média ${M.maeA.toLocaleString("pt-BR",{maximumFractionDigits:2,minimumFractionDigits:2})} p.p.${M.maeP3!=null?` · a partir de 3% apurado: ${M.maeP3.toLocaleString("pt-BR",{maximumFractionDigits:2,minimumFractionDigits:2})} p.p.`:""}</small></div>
+      <div class="kpi"><b>${pct(M.band,0)}</b><span>das faixas de 95% continham o resultado final</span><small>O esperado de uma faixa bem calibrada é perto de 95%.</small></div>`;
+  } else {
+    $("verdict").innerHTML = `O índice de acerto aparece assim que o histórico de leituras da noite for publicado.`;
+    $("secChart").hidden = true; $("secTable").hidden = true;
+  }
+  if(H.from!=="file"){
+    $("nohist").innerHTML = H.from==="local"
+      ? `<div class="nohist"><b>Estes números vêm das leituras salvas neste navegador.</b> Quem abrir a página em outro aparelho não vai vê-los. Para publicar para todos, baixe o arquivo e coloque-o em <code>site/data/</code> no GitHub com o nome <code>historico_2t.json</code>.<br><button class="btn" id="exp" type="button">Baixar historico_2t.json</button></div>`
+      : `<div class="nohist"><b>O histórico de leituras da noite ainda não foi publicado.</b> Ele fica salvo no navegador de quem acompanhou a projeção ao vivo. Abra esta página nesse navegador para ver o índice de acerto e baixar o arquivo.</div>`;
+    const b=$("exp"); if(b) b.onclick=()=>{
+      const blob=new Blob([JSON.stringify({gerado:new Date().toISOString(), eleicao:ELE, proj:ls("proj:hist:"+ELE)||[], apu:ls("apu:hist:"+ELE)||[]})],{type:"application/json"});
+      const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="historico_2t.json"; document.body.appendChild(a); a.click(); a.remove();
+    };
+  }
+  if(M){ renderChart(pts, finalA, C); renderTable(pts, finalA, C); }
+}
+
+function renderChart(h, finalA, C){
+  h = h.filter(p=>p.x<99.5);
+  const W=Math.max(340,Math.min(640,($("chart").clientWidth||640)-28)),H=W<480?220:260,L=36,R=12,T=10,B=26, col=C[0].col;
+  const vals=h.flatMap(p=>[p.lo*100,p.hi*100,p.pc*100]).concat(finalA*100);
   const lo=Math.floor(Math.min(...vals,48)-1), hi=Math.ceil(Math.max(...vals,52)+1);
   const x0=Math.max(0,Math.floor(h[0].x/10)*10);
   const X=p=>L+(p-x0)/(100-x0||1)*(W-L-R), Y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
-  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Projeção e apuração ao longo da noite">`;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Projeção, apuração e resultado final">`;
   const step=(hi-lo)>16?4:(hi-lo)>8?2:1;
   for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step) s+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end">${v}%</text>`;
-  s+=`<line x1="${L}" x2="${W-R}" y1="${Y(50)}" y2="${Y(50)}" stroke="var(--ink)" opacity=".55"/>`;
+  s+=`<line x1="${L}" x2="${W-R}" y1="${Y(50)}" y2="${Y(50)}" stroke="var(--ink)" opacity=".35" stroke-dasharray="2 4"/>`;
   for(let p=x0;p<=100;p+=(100-x0)>50?20:10) s+=`<text x="${X(p)}" y="${H-6}" text-anchor="middle">${p}%</text>`;
   const band=h.map(p=>`${X(p.x).toFixed(1)},${Y(p.hi*100).toFixed(1)}`).join(" ")+" "+[...h].reverse().map(p=>`${X(p.x).toFixed(1)},${Y(p.lo*100).toFixed(1)}`).join(" ");
   s+=`<polygon points="${band}" fill="${col}" opacity=".16"/>`;
   s+=`<path d="${h.map((p,i)=>`${i?"L":"M"}${X(p.x).toFixed(1)},${Y(p.pc*100).toFixed(1)}`).join("")}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="5 4" opacity=".75"/>`;
   s+=`<path d="${h.map((p,i)=>`${i?"L":"M"}${X(p.x).toFixed(1)},${Y(p.pa*100).toFixed(1)}`).join("")}" fill="none" stroke="${col}" stroke-width="2.8" stroke-linejoin="round"/>`;
-  const lp=h[h.length-1]; s+=`<circle cx="${X(lp.x)}" cy="${Y(lp.pa*100)}" r="4.5" fill="${col}"/>`;
-  s+=`</svg><div class="legend" style="color:${col}"><span><span class="sw" style="background:currentColor"></span><span style="color:var(--ink2)">Projeção de ${esc(C[0].nm)}</span></span><span><span class="sw box" style="background:currentColor;opacity:.25"></span><span style="color:var(--ink2)">faixa de 95%</span></span><span><span class="sw dash"></span><span style="color:var(--ink2)">apurado naquele momento</span></span><span style="color:var(--ink2)">eixo horizontal: % das seções apuradas · ${esc(C[1].nm)} = 100% − ${esc(C[0].nm)}</span></div>`;
+  s+=`<line x1="${L}" x2="${W-R}" y1="${Y(finalA*100)}" y2="${Y(finalA*100)}" stroke="var(--ink)" stroke-width="1.6"/><text x="${W-R}" y="${Y(finalA*100)-6}" text-anchor="end" style="fill:var(--ink);font-weight:700">resultado: ${pct(finalA*100,2)}</text>`;
+  s+=`</svg><div class="legend" style="color:${col}"><span><span class="sw" style="background:currentColor"></span><span style="color:var(--ink2)">Projeção de ${esc(C[0].nm)}</span></span><span><span class="sw box" style="background:currentColor;opacity:.25"></span><span style="color:var(--ink2)">faixa de 95%</span></span><span><span class="sw dash"></span><span style="color:var(--ink2)">apurado naquele momento</span></span><span style="color:var(--ink2)"><span class="sw" style="background:var(--ink)"></span>resultado final</span><span style="color:var(--ink2)">eixo horizontal: % das seções apuradas</span></div>`;
   $("chart").innerHTML=s;
 }
-function renderTable(C){
-  const P=state.proj; if(!P){ $("uft").innerHTML=""; return; }
-  const by={}; P.strata.forEach(s=>{ const u=by[s.uf] ||= {a:0,b:0,rem:0}; u.a+=s.a; u.b+=s.b; u.rem+=s.rem; });
-  const rows=Object.keys(UFS).filter(u=>by[u]).map(u=>{
-    const l=state.live[u.toLowerCase()]||{votes:{},pst:0}, ca=l.votes[C[0].n]||0, cb=l.votes[C[1].n]||0;
-    return {u, pst:l.pst, now: ca+cb? ca/(ca+cb)*100:null, proj: by[u].a/(by[u].a+by[u].b)*100};
-  }).sort((a,b)=>UFS[a.u].localeCompare(UFS[b.u],"pt"));
-  const lead=(v)=>v==null?"":`<span class="dot" style="background:${v>=50?C[0].col:C[1].col}"></span>`;
-  $("uft").innerHTML=`<thead><tr><th scope="col">Estado</th><th scope="col">Apurado</th><th scope="col">${esc(C[0].nm)} agora</th><th scope="col">${esc(C[0].nm)} projetado</th><th scope="col">${esc(C[1].nm)} projetado</th></tr></thead>
-  <tbody>${rows.map(r=>`<tr><td>${UFS[r.u]}</td><td>${pct(r.pst)}</td><td>${r.now!=null?pct(r.now):"—"}</td><td>${lead(r.proj)}${pct(r.proj)}</td><td>${pct(100-r.proj)}</td></tr>`).join("")}</tbody>`;
+function renderTable(pts, finalA, C){
+  const rows = checkpoints(pts);
+  const f2 = v => v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+  $("acc").innerHTML = `<thead><tr><th scope="col">Apurado</th><th scope="col">${esc(C[0].nm)} no apurado</th><th scope="col">Projeção</th><th scope="col">Faixa de 95%</th><th scope="col">Erro do apurado</th><th scope="col">Erro da projeção</th><th scope="col">Resultado dentro da faixa?</th></tr></thead>
+  <tbody>${rows.map(r=>{
+    const eA=(r.pc-finalA)*100, eP=(r.pa-finalA)*100, inB=finalA>=r.lo&&finalA<=r.hi;
+    return `<tr><td>${pct(r.x,2)}</td><td>${pct(r.pc*100,2)}</td><td>${pct(r.pa*100,2)}</td><td>${pct(r.lo*100,1)} a ${pct(r.hi*100,1)}</td><td>${pp(eA)} p.p.</td><td><b>${pp(eP)} p.p.</b></td><td>${inB?"Sim":"Não"}</td></tr>`;
+  }).join("")}
+  <tr><td>100%</td><td colspan="6">Resultado final: ${esc(C[0].nm)} ${pct(finalA*100,2)} · ${esc(C[1].nm)} ${pct((1-finalA)*100,2)}</td></tr></tbody>`;
 }
-
-$("refresh").addEventListener("click", cycle);
-document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && Date.now()-state.last>CYCLE) cycle(); });
-
-/* ---------- Simulação (?demo=1): eleição inventada, urnas chegando em ordem enviesada ---------- */
-const DEMO_T0 = Date.now();
-let WORLD=null;
-function world(){
-  if(WORLD) return WORLD;
-  let seed=20261025; const r=()=>{ seed=(seed*1664525+1013904223)%4294967296; return seed/4294967296; };
-  const g=()=>Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(2*Math.PI*r());
-  const units=[]; const tau=0.42;
-  UF_KEYS.forEach((u,i)=>{
-    const lean=(r()-0.5)*0.34, o=0.05+0.1*r(), speedUF=1-2.2*lean;
-    const add=(key,V,big)=>{ const zones=[]; for(let z=0;z<8;z++){ const a1=Math.min(.85,Math.max(.1,0.44+lean+g()*0.07)); const sh=Math.min(.95,Math.max(.05,a1+tau*o+g()*0.012)); zones.push({V:V/8,a1,o,sh,sp:speedUF*(big?1.7:0.8)*(0.6+0.8*r())}); } units.push({uf:u,key,zones,big}); };
-    CITY_KEYS.filter(c=>c.uf===u).forEach(c=>add(c.key, 8e4+r()*6e5, true));
-    add("_rest_"+u, 5e5+r()*3.5e6, false);
-  });
-  return WORLD={units};
-}
-function demoFile(ele, key){
-  const W=world(), t=((Date.now()-DEMO_T0)%240000)/200000;
-  const pick = key==="br" ? W.units : W.units.filter(u=> key.length===2 ? u.uf===key : u.key===key);
-  if(!pick.length) return Promise.reject(Object.assign(new Error("404"),{status:404}));
-  let A=0,B=0,O=0,ts=0,st=0;
-  pick.forEach(u=>u.zones.forEach(z=>{
-    const secs=z.V/300; ts+=secs;
-    if(ele===T1){ A+=z.V*z.a1; O+=z.V*z.o; B+=z.V*(1-z.a1-z.o); st+=secs; }
-    else { const p=Math.min(1,t*z.sp); const v=p*z.V*0.97; A+=v*z.sh; B+=v*(1-z.sh); st+=p*secs; }
-  }));
-  const votes = ele===T1 ? {"13":A,"22":B,"30":O} : {"13":A,"22":B};
-  const cands=[{n:"13",sq:"",nm:"Candidato Um",sg:"PT",vap:A},{n:"22",sq:"",nm:"Candidato Dois",sg:"PL",vap:B}];
-  return Promise.resolve({votes,cands,vv:A+B+O,ts,st,pst:ts?st/ts*100:0,hg:new Date().toLocaleTimeString("pt-BR"),dg:"25/10/2026"});
-}
-
-render(); cycle();
+main();
 })();
 </script>
 </body>

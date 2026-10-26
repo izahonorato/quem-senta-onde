@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Apuração ao vivo — Presidente 2026, 2º turno</title>
-<meta name="description" content="Apuração em tempo real do 2º turno presidencial de 2026, com dados oficiais do TSE.">
+<title>Resultado do 2º turno — Presidente 2026</title>
+<meta name="description" content="Resultado do 2º turno presidencial de 2026, com dados oficiais do TSE.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -43,6 +43,7 @@ header.top{padding-top:calc(28px + env(safe-area-inset-top,0px));padding-bottom:
 .live i{width:9px;height:9px;border-radius:50%;background:var(--cx)}
 .live.on i{background:var(--c0);animation:pulse 1.6s infinite}
 .live.err i{background:var(--warn)}
+.live.done i{background:var(--ok)}
 @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c0) 60%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
 .statusbar .sp{flex:1}
 .btn{border:1px solid var(--line);background:var(--paper);padding:7px 13px;border-radius:9px;cursor:pointer;font-weight:600;font-size:.85rem}
@@ -144,15 +145,12 @@ code{font-size:.85em;background:var(--soft);padding:1px 5px;border-radius:4px;ov
 </head>
 <body>
 <header class="top wrap">
-  <a class="back" href="../">← Quem senta onde</a> &nbsp; <a class="back" href="../projecao/">Projeção ao vivo →</a>
-  <h1 class="brand">Apuração ao vivo</h1>
-  <p class="lede" id="lede">Presidente da República, 2º turno — 25 de outubro de 2026. Os números vêm direto dos arquivos oficiais do TSE e se atualizam sozinhos.</p>
+  <a class="back" href="../">← Quem senta onde</a> &nbsp; <a class="back" href="../projecao/">Como a projeção se saiu →</a>
+  <h1 class="brand">Resultado do 2º turno</h1>
+  <p class="lede" id="lede">Presidente da República, 2º turno — 25 de outubro de 2026. Resultado final, com todas as seções totalizadas pelo TSE.</p>
   <div class="statusbar" role="status" aria-live="polite">
-    <span class="live" id="live"><i></i><span id="liveTxt">Conectando ao TSE…</span></span>
+    <span class="live done" id="live"><i></i><span id="liveTxt">Carregando o resultado…</span></span>
     <span id="updTxt"></span>
-    <span class="sp"></span>
-    <span id="nextTxt"></span>
-    <button class="btn" id="refresh" type="button">Atualizar agora</button>
   </div>
   <div class="banner" id="banner" hidden></div>
 </header>
@@ -172,7 +170,7 @@ code{font-size:.85em;background:var(--soft);padding:1px 5px;border-radius:4px;ov
 
   <section class="sec">
     <h2>Por estado</h2>
-    <p>A cor mostra quem lidera em cada estado e fica mais forte quanto maior a vantagem. Toque ou passe o mouse num estado para ver os detalhes; o eleitorado no exterior aparece no canto do mapa.</p>
+    <p>A cor mostra quem venceu em cada estado e fica mais forte quanto maior a vantagem. Toque ou passe o mouse num estado para ver os detalhes; o eleitorado no exterior aparece no canto do mapa.</p>
     <div class="mapgrid">
       <div>
         <div class="map" id="map"><div class="maptip" id="maptip"></div></div>
@@ -183,17 +181,16 @@ code{font-size:.85em;background:var(--soft);padding:1px 5px;border-radius:4px;ov
     <div class="tblwrap"><table class="uft" id="uft"></table></div>
   </section>
 
-  <section class="sec">
-    <h2>Como a apuração andou</h2>
-    <p>Percentual de votos válidos de cada candidato conforme as urnas foram sendo totalizadas. A linha começa quando você abre a página e fica guardada neste navegador.</p>
+  <section class="sec" id="secHist">
+    <h2>Como foi a apuração</h2>
+    <p>Percentual de votos válidos de cada candidato conforme as urnas foram sendo totalizadas na noite de 25 de outubro, nas leituras registradas por esta página.</p>
     <div class="chart" id="chart"></div>
   </section>
 </main>
 
 <footer class="wrap">
-  <p><b>Fonte.</b> Arquivos públicos de resultados do Tribunal Superior Eleitoral em <a href="https://resultados.tse.jus.br" target="_blank" rel="noopener">resultados.tse.jus.br</a> (eleição <code id="eleCode">6258</code>, cargo Presidente). A página lê os mesmos dados que alimentam o app Resultados do TSE, sem tratamento além de somas e arredondamentos. Os percentuais são sobre votos válidos — brancos e nulos não entram na conta. Mapa dos estados: <a href="https://mapsvg.com/maps/brazil" target="_blank" rel="noopener">MapSVG</a>, licença CC BY 4.0.</p>
-  <p><b>O que "eleito" quer dizer aqui.</b> O selo só aparece quando o próprio arquivo do TSE marca o candidato como eleito. Antes disso, nenhum resultado é definitivo, por maior que seja a vantagem.</p>
-  <p>Atualização a cada 30 segundos (nacional) e 90 segundos (estados). Endereços úteis: <code>?demo=1</code> mostra uma simulação para teste; <code>?eleicao=6257</code> abre o 1º turno.</p>
+  <p><b>Fonte.</b> Arquivos públicos de resultados do Tribunal Superior Eleitoral em <a href="https://resultados.tse.jus.br" target="_blank" rel="noopener">resultados.tse.jus.br</a> (eleição <code id="eleCode">6258</code>, cargo Presidente). Os números são uma cópia do resultado final publicado pelo TSE, sem tratamento além de somas e arredondamentos. Os percentuais são sobre votos válidos — brancos e nulos não entram na conta. Mapa dos estados: <a href="https://mapsvg.com/maps/brazil" target="_blank" rel="noopener">MapSVG</a>, licença CC BY 4.0.</p>
+  <p>O resultado só se torna definitivo com a diplomação pela Justiça Eleitoral.</p>
 </footer>
 
 <script>
@@ -240,7 +237,7 @@ function findCands(o, sg, out){
       id: String(o.sqcand || o.n || o.seq || o.nm), sq: o.sqcand ? String(o.sqcand) : "",
       n: o.n || "", nm: title(o.nmu || o.nm), full: title(o.nm || o.nmu), sg: o.sg || party || o.cc || "",
       vap: num(o.vap), pvap: num(o.pvap),
-      eleito: o.e==="s" || o.e==="S" || /^eleito/i.test(o.st||"") || /^eleito/i.test(o.dvt||"")
+      eleito: o.e===true || /^s/i.test(String(o.e||"")) || (/eleit/i.test(`${o.st||""} ${o.dvt||""}`) && !/n[ãa]o eleit/i.test(`${o.st||""} ${o.dvt||""}`))
     });
     return;
   }
@@ -264,10 +261,16 @@ function parse(d){
   };
 }
 
-/* ---------- Busca (direto no TSE; se falhar, pela função /tse) ---------- */
+/* ---------- Dados: cópia final salva pelo robô em ../data/presidente_2t.json; se ainda não existir, lê o TSE uma vez ---------- */
+let FINAL;
+async function finalData(){
+  if(FINAL===undefined){ try{ const r=await fetch("../data/presidente_2t.json",{cache:"no-cache"}); FINAL = r.ok ? await r.json() : null; }catch(e){ FINAL=null; } }
+  return FINAL;
+}
 let route = store.get("route") || "direct";
 async function getJSON(uf){
   if(DEMO) return demo(uf);
+  const F = await finalData(); if(F && F[uf]) return F[uf];
   const tryRoute = async r => {
     const res = await fetch(urlFor(r==="direct"?TSE:PROXY, uf), {cache:"no-cache"});
     if(!res.ok) { const e=new Error("HTTP "+res.status); e.status=res.status; throw e; }
@@ -285,10 +288,7 @@ async function getJSON(uf){
 
 /* ---------- Estado ---------- */
 const state = { nat:null, ufs:{}, sel:store.get("sel")||"SP", sort:{k:"uf",dir:1}, lastOk:0, err:null, order:null };
-const cached = store.get("nat:"+ELE+(DEMO?":demo":""));
-if(cached){ state.nat=cached.nat; state.lastOk=cached.t; }
-const cachedUfs = store.get("ufs:"+ELE+(DEMO?":demo":""));
-if(cachedUfs) state.ufs=cachedUfs;
+
 
 /* cores: PT em vermelho, PL em azul; outros pela ordem fixa do primeiro arquivo lido */
 function colorOf(c){
@@ -308,8 +308,9 @@ function stable(cands){ return state.order ? [...cands].sort((a,b)=>state.order.
 /* ---------- Fotos (arquivo público do TSE; se não carregar, iniciais) ---------- */
 const initials = nm => nm.split(" ").filter(w=>w.length>2||/^[A-Z]/.test(w)).map(w=>w[0]).slice(0,2).join("").toUpperCase();
 const fotoUrl = (ele,sq) => `${TSE}/ele2026/${ele}/fotos/br/${sq}.jpeg`;
+const fotoLocal = sq => `../fotos/${sq}.jpeg`;
 function photo(c){
-  const img = (!DEMO && c.sq) ? `<img src="${fotoUrl(ELE,c.sq)}" data-alt="${ELE==="6257"?"":fotoUrl("6257",c.sq)}" alt="" loading="lazy">` : "";
+  const img = (!DEMO && c.sq) ? `<img src="${fotoLocal(c.sq)}" data-alt="${fotoUrl(ELE,c.sq)}" alt="" loading="lazy">` : "";
   return `<span class="ph" aria-hidden="true">${esc(initials(c.nm))}${img}</span>`;
 }
 document.addEventListener("error", e=>{
@@ -330,7 +331,7 @@ function renderNat(){
     <div class="cand${i===0&&started?" first":""}" style="--cc:${colorOf(c)}">
       ${photo(c)}
       <div class="who">
-        ${c.eleito?`<span class="tag">Eleito, segundo o TSE</span>`:i===0&&started&&rank[1]&&c.vap>rank[1].vap?`<span class="tag">À frente</span>`:""}
+        ${(c.eleito||(i===0&&n.pst>=100&&rank[1]&&c.vap>rank[1].vap))?`<span class="tag">Presidente eleito</span>`:i===0&&started&&rank[1]&&c.vap>rank[1].vap?`<span class="tag">À frente</span>`:""}
         <span class="nm">${esc(c.nm)}</span>
         <span class="pt">${esc(c.sg)}${c.n?` · ${esc(c.n)}`:""}</span>
         <span class="vt">${started?fmt(c.vap)+" votos":"aguardando"}</span>
@@ -342,7 +343,7 @@ function renderNat(){
   if(started && top.length===2){
     const lead = top[0].vap>=top[1].vap ? top[0] : top[1], other = lead===top[0]?top[1]:top[0];
     const dv = lead.vap-other.vap;
-    $("barcap").innerHTML = `<span>${dv?`<b>${esc(lead.nm)}</b> à frente por <b>${fmt(dv)}</b> votos (${pct(lead.pvap-other.pvap)} p.p.)`:"Empate"}</span><span>linha = 50%</span>`;
+    $("barcap").innerHTML = `<span>${dv?`<b>${esc(lead.nm)}</b> ${n.pst>=100?"venceu":"à frente"} por <b>${fmt(dv)}</b> votos (${pct(lead.pvap-other.pvap)} p.p.)`:"Empate"}</span><span>linha = 50%</span>`;
   } else $("barcap").innerHTML = `<span>Os votos começam a aparecer depois que as urnas fecham, às 17h de Brasília.</span>`;
   $("pst").textContent = pct(n.pst);
   $("pstLbl").textContent = n.ts ? `das seções totalizadas (${fmt(n.st)} de ${fmt(n.ts)})` : "das seções totalizadas";
@@ -396,7 +397,7 @@ function buildMap(){
   const show = el=>{
     const uf = el.dataset.uf, inf = ufInfo(uf);
     tip.innerHTML = `<b>${UFS[uf]}</b><br>` + (inf && inf.started
-      ? `${esc(inf.lead.nm)} lidera com ${pct(inf.lead.pvap,1)}<br>${pct(inf.d.pst,1)} apurado`
+      ? (inf.d.pst>=100 ? `${esc(inf.lead.nm)} venceu com ${pct(inf.lead.pvap,1)}` : `${esc(inf.lead.nm)} lidera com ${pct(inf.lead.pvap,1)}<br>${pct(inf.d.pst,1)} apurado`)
       : inf ? "Ainda sem votos apurados" : "Aguardando o TSE");
     const mr=$("map").getBoundingClientRect(), r=el.getBoundingClientRect();
     tip.classList.add("show");
@@ -420,7 +421,7 @@ function renderTiles(){
     g.querySelector("path,rect").style.fill = fill;
     g.classList.toggle("sel", uf===state.sel);
     g.setAttribute("aria-pressed", uf===state.sel);
-    g.setAttribute("aria-label", `${UFS[uf]}${inf&&inf.started?`, lidera ${inf.lead.nm} com ${pct(inf.lead.pvap,1)}, ${pct(inf.d.pst,1)} apurado`:""}`);
+    g.setAttribute("aria-label", `${UFS[uf]}${inf&&inf.started?`, ${inf.lead.nm} venceu com ${pct(inf.lead.pvap,1)}`:""}`);
     const lb=$("map").querySelector(`[data-lb="${uf}"]`);
     if(lb){
       const out = lb.dataset.out;
@@ -431,7 +432,7 @@ function renderTiles(){
   /* estado selecionado por cima, para a borda aparecer inteira */
   const sel=$("map").querySelector(".st.sel:not(.ext)"); if(sel) $("mapSt").insertBefore(sel, $("mapSt").querySelector(".ext"));
   const top = state.nat ? stable(state.nat.cands).slice(0,2) : [];
-  $("legend").innerHTML = top.map(c=>`<span><span class="ramp">${[38,65,85,100].map(a=>`<i style="background:color-mix(in srgb, ${colorOf(c)} ${a}%, var(--paper))"></i>`).join("")}</span> ${esc(c.nm)} lidera</span>`).join("") + `<span>claro: até 5 p.p. · forte: 30 p.p. ou mais</span>`;
+  $("legend").innerHTML = top.map(c=>`<span><span class="ramp">${[38,65,85,100].map(a=>`<i style="background:color-mix(in srgb, ${colorOf(c)} ${a}%, var(--paper))"></i>`).join("")}</span> ${esc(c.nm)} venceu</span>`).join("") + `<span>claro: até 5 p.p. · forte: 30 p.p. ou mais</span>`;
 }
 function renderUfCard(){
   const uf = state.sel, inf = ufInfo(uf);
@@ -487,8 +488,14 @@ function pushHist(n){
   h.push({p:n.pst, c:Object.fromEntries(n.cands.map(c=>[c.id,c.pvap])), h:n.hg});
   store.set(histKey(), h.slice(-400));
 }
+let HIST = null;
+async function loadHist(){
+  try{ const r=await fetch("../data/historico_2t.json",{cache:"no-cache"}); if(r.ok){ const j=await r.json(); if(j.apu&&j.apu.length) HIST=j.apu; } }catch(e){}
+  if(!HIST) HIST = store.get(histKey()) || [];
+}
 function renderChart(){
-  const h = store.get(histKey()) || [];
+  const h = HIST || [];
+  $("secHist").hidden = h.length<2;
   const top = state.nat ? stable(state.nat.cands).slice(0,2) : [];
   if(h.length<2 || !top.length){ $("chart").innerHTML = `<div class="empty">O gráfico aparece a partir da segunda atualização com votos apurados.</div>`; return; }
   const W=640,H=240,L=34,R=12,T=10,B=26;
@@ -512,56 +519,24 @@ function renderChart(){
 }
 
 /* ---------- Status ---------- */
-let nextNat = 0;
 function renderStatus(){
-  const live = $("live");
-  live.className = "live " + (state.err ? "err" : state.lastOk ? "on" : "");
-  $("liveTxt").textContent = DEMO ? "Simulação (não são votos reais)" : state.err ? "Sem resposta do TSE" : state.lastOk ? "Ao vivo" : "Conectando ao TSE…";
-  const n = state.nat;
+  const n = state.nat, done = n && n.pst>=100;
+  $("live").className = "live " + (state.err ? "err" : done ? "done" : "");
+  $("liveTxt").textContent = DEMO ? "Simulação (não são votos reais)" : state.err ? "Não foi possível carregar o resultado" : !n ? "Carregando o resultado…" : done ? "Resultado final" : "Resultado parcial";
   $("updTxt").textContent = n && n.hg ? `Totalização do TSE: ${n.dg?n.dg+" ":""}às ${n.hg}` : "";
   const b = $("banner");
-  if(DEMO){ b.hidden=false; b.className="banner warn"; b.innerHTML = `<b>Modo simulação.</b> Os números abaixo são inventados para testar a página. <a href="${location.pathname}">Ver a apuração real</a>.`; }
-  else if(state.err){
-    b.hidden=false; b.className="banner warn";
-    const ago = state.lastOk ? Math.round((Date.now()-state.lastOk)/60000) : null;
-    b.innerHTML = state.err===404
-      ? `<b>O TSE ainda não publicou o arquivo desta eleição.</b> A página tenta de novo sozinha.`
-      : `<b>Não foi possível falar com o TSE agora.</b> ${ago!=null?`Mostrando a última leitura, de ${ago<1?"menos de um minuto":ago+" min"} atrás. `:""}A página tenta de novo sozinha.`;
-  } else if(n && !n.vv && !n.st){ b.hidden=false; b.className="banner"; b.innerHTML = `<b>As urnas fecham às 17h (horário de Brasília).</b> A partir daí os primeiros resultados aparecem aqui em poucos minutos.`; }
+  if(state.err){ b.hidden=false; b.className="banner warn"; b.innerHTML = `<b>Não foi possível carregar o resultado agora.</b> Tente recarregar a página.`; }
   else b.hidden=true;
 }
-function tick(){
-  const s = Math.max(0, Math.round((nextNat-Date.now())/1000));
-  $("nextTxt").textContent = nextNat ? `próxima leitura em ${s}s` : "";
-}
+function tick(){}
 
-/* ---------- Ciclo de atualização ---------- */
-let natTimer, ufTimer;
-async function loadNat(){
-  clearTimeout(natTimer);
-  try{
-    const n = parse(await getJSON("br"));
-    state.nat = n; state.lastOk = Date.now(); state.err = null;
-    store.set("nat:"+ELE+(DEMO?":demo":""), {nat:n, t:state.lastOk});
-    pushHist(n);
-  }catch(e){ state.err = e.status===404 ? 404 : "net"; }
+/* ---------- Carga única do resultado final ---------- */
+async function loadAll(){
+  try{ state.nat = parse(await getJSON("br")); state.lastOk = Date.now(); state.err=null; }
+  catch(e){ state.err = e.status===404 ? 404 : "net"; }
+  await Promise.all(ORDER.map(async uf=>{ try{ state.ufs[uf] = parse(await getJSON(uf.toLowerCase())); }catch(e){} }));
+  await loadHist();
   renderAll();
-  const done = state.nat && state.nat.pst>=100;
-  const wait = done ? 300000 : NAT_MS;
-  nextNat = Date.now()+wait;
-  natTimer = setTimeout(loadNat, wait);
-}
-async function loadUfs(){
-  clearTimeout(ufTimer);
-  const list = ORDER;
-  /* até 6 pedidos por vez, para não sobrecarregar */
-  let i=0;
-  const worker = async()=>{ while(i<list.length){ const uf=list[i++]; try{ state.ufs[uf] = parse(await getJSON(uf.toLowerCase())); }catch(e){} } };
-  await Promise.all(Array.from({length:6},worker));
-  store.set("ufs:"+ELE+(DEMO?":demo":""), state.ufs);
-  renderAll();
-  const done = state.nat && state.nat.pst>=100;
-  ufTimer = setTimeout(loadUfs, done ? 600000 : UF_MS);
 }
 function renderAll(){ renderStatus(); renderNat(); renderTiles(); renderUfCard(); renderTable(); renderChart(); tick(); }
 
@@ -571,9 +546,7 @@ $("uft").addEventListener("click", e=>{
   if(th){ const k=th.dataset.k; state.sort = {k, dir: state.sort.k===k ? -state.sort.dir : (k==="uf"?1:-1)}; renderTable(); return; }
   const tr=e.target.closest("tr[data-uf]"); if(tr){ state.sel=tr.dataset.uf; store.set("sel",state.sel); renderTiles(); renderUfCard(); $("ufcard").scrollIntoView({behavior:"smooth",block:"nearest"}); }
 });
-$("refresh").addEventListener("click", ()=>{ loadNat(); loadUfs(); });
-document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && Date.now()-state.lastOk>NAT_MS){ loadNat(); loadUfs(); } });
-setInterval(tick, 1000);
+
 
 /* ---------- Simulação (?demo=1) — mesmo formato dos arquivos do TSE ---------- */
 const T0 = Date.now();
@@ -600,8 +573,7 @@ function demo(uf){
 }
 
 renderAll();
-loadNat();
-loadUfs();
+loadAll();
 })();
 </script>
 </body>

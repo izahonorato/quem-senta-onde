@@ -16,10 +16,11 @@ republica o site no **Cloudflare Pages** (gratuito, tráfego ilimitado e permite
 A única informação que não vem do TSE é a cor de esquerda/centro/direita, que é uma
 classificação acadêmica explicada no rodapé do site.
 
-## Apuração ao vivo (Presidente)
+## Resultado do 2º turno (Presidente)
 
-A página `site/apuracao/` mostra a apuração presidencial em tempo real. Ela não depende do robô:
-o navegador de quem visita lê direto os arquivos públicos do TSE a cada 30 segundos.
+A página `site/apuracao/` mostra o resultado final do 2º turno presidencial. Durante a apuração ela lia
+o TSE ao vivo; agora lê a cópia final que o robô salva em `site/data/presidente_2t.json` (e as fotos em
+`site/fotos/`). Se esse arquivo ainda não existir, ela lê o TSE uma única vez.
 
 | Turno | Código da eleição | Endereço |
 |---|---|---|
@@ -35,12 +36,13 @@ arquivos `.json` de `resultados.tse.jus.br/oficial/`. Ela é publicada junto com
 
 Mapa dos estados: MapSVG, licença CC BY 4.0.
 
-## Projeção ao vivo
+## Projeção do 2º turno
 
 A página `site/projecao/` estima o resultado final a partir do que já foi apurado. Ela divide o
 país em 143 pedaços (as 115 maiores cidades e capitais, o resto de cada estado e o exterior),
 compara cada pedaço com o 1º turno (eleição 6257) e projeta as urnas que faltam. A conta roda no
-navegador de quem visita, a cada minuto. O método está explicado na própria página. É uma
+navegador de quem visita. Agora que a eleição acabou, a página compara as leituras registradas
+durante a noite (`site/data/historico_2t.json`) com o resultado final e mostra o índice de acerto. É uma
 versão simplificada, inspirada em github.com/rodrigomahlmeister/projecao-2026-metodo, sem usar
 o código dele. `?demo=1` mostra uma simulação.
 
