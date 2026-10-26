@@ -70,6 +70,16 @@ nav.casas button[aria-selected="true"] small{color:inherit;opacity:.75}
 .total span{color:var(--ink2);font-size:.85rem}
 .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);padding:8px 11px;border-radius:9px;font-size:.85rem;line-height:1.35;max-width:240px;opacity:0;transform:translate(-50%,calc(-100% - 12px));transition:opacity .12s;z-index:3}
 .tip.show{opacity:1}
+.tip{max-width:300px}
+.tiprow{display:flex;gap:10px;align-items:center}
+.tiprow .fto{width:54px;height:54px;flex:none}
+.tiprow > div{min-width:160px}
+.fto{border-radius:50%;object-fit:cover;object-position:50% 18%;background:var(--soft);display:block}
+.gwin{display:flex;gap:16px;align-items:center}
+.gwin .fto{width:96px;height:96px;flex:none;box-shadow:0 0 0 3px var(--paper),0 0 0 5px var(--c)}
+.gov:not(.big) .gwin .fto{width:52px;height:52px}
+.gov:not(.big) .gwin{gap:12px}
+.mapbox{position:relative}
 .tip b{font-weight:700}
 
 .blocks{margin-top:14px}
@@ -190,6 +200,7 @@ footer a{color:inherit}
 .brmap .uf.dim{opacity:.22}
 .brmap .uf.sel,.brmap .dfdot.sel{stroke:var(--ink);stroke-width:3}
 .brmap .uf:focus-visible{outline:none;stroke:var(--focus);stroke-width:3}
+.brmap .uf:focus,.brmap .dfdot:focus,.brmap .lbl:focus,.brmap:focus{outline:none}
 .brmap .dfdot{stroke:var(--paper);stroke-width:1.5;cursor:pointer}
 .brmap .lbl{font:700 11px var(--body);text-anchor:middle;dominant-baseline:central;fill:#fff;stroke:rgba(10,18,32,.55);stroke-width:2.6px;paint-order:stroke;cursor:pointer}
 .brmap .lbl.out{text-anchor:start;fill:var(--ink);stroke:none}
@@ -340,6 +351,9 @@ function namesHTML(list,{titulo,uf=false,votos=true,extra=null}){
 }
 function emptyHTML(msg){return `<div class="empty" style="margin-top:22px"><h3 style="margin:0;font-family:var(--display)">Ainda sem dados do TSE</h3><p>${msg}</p></div>`}
 
+/* ---------- Fotos oficiais (baixadas do TSE pelo robô para site/fotos/) ---------- */
+const fotoHTML = (sq, nome) => sq ? `<img class="fto" src="fotos/${esc(sq)}.jpeg" alt="Foto oficial de ${esc(nome||"")}" loading="lazy" onerror="this.remove()">` : "";
+
 /* ---------- Telas ---------- */
 let current=[];
 function viewSenado(){
@@ -410,7 +424,7 @@ function govDetail(x){
   const nome=UF[x.uf][0];
   if(x.tipo==="eleito"||x.tipo==="eleito2"){const f=pinfo(x.w.p)[1];
     return `<article class="gov big" style="--c:${faixaVar(f)}"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag win">${x.tipo==="eleito2"?"Eleito no 2º turno":"Eleito no 1º turno"}</span></header>
-      <p class="gname">${esc(x.w.nome)}</p><p class="gsub">${esc(x.w.p)}, ${pinfo(x.w.p)[0]}. ${f>=0?FAIXAS[f]:"Sem classificação"}.</p>
+      <div class="gwin">${fotoHTML(x.w.sq,x.w.nome)}<div><p class="gname">${esc(x.w.nome)}</p><p class="gsub">${esc(x.w.p)}, ${pinfo(x.w.p)[0]}. ${f>=0?FAIXAS[f]:"Sem classificação"}.</p></div></div>
       <p class="gsub"><b>${pc(x.w.pct)}</b> dos votos válidos${x.w.votos?`, ${fmt(x.w.votos)} votos`:""}.</p>
       ${x.aberto?`<p class="gsub">${x.como==="conta"?"Já não pode mais ser alcançado: a vantagem é maior que o número de eleitores das urnas que faltam.":"Declarado eleito pelo TSE."} Apuração em andamento, com ${pc(x.pst)} das seções${x.hg?` (TSE, ${esc(x.hg)})`:""}.</p>`:""}
       <h5>${x.tipo==="eleito2"?(x.aberto?"Parcial do 2º turno":"Resultado do 2º turno"):"Resultado"}</h5>${duelHTML(x.cands.slice(0,6))}
@@ -423,7 +437,7 @@ function govDetail(x){
 function govCard(x){
   const nome=UF[x.uf][0];
   if(x.tipo==="eleito"||x.tipo==="eleito2"){const f=pinfo(x.w.p)[1];
-    return `<article class="gov" style="--c:${faixaVar(f)}"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag win">${x.tipo==="eleito2"?"Eleito no 2º turno":"Eleito no 1º turno"}</span></header><p class="gname">${esc(x.w.nome)}</p><p class="gsub">${esc(x.w.p)}, ${pc(x.w.pct)} dos votos válidos.</p></article>`;}
+    return `<article class="gov" style="--c:${faixaVar(f)}"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag win">${x.tipo==="eleito2"?"Eleito no 2º turno":"Eleito no 1º turno"}</span></header><div class="gwin">${fotoHTML(x.w.sq,x.w.nome)}<div><p class="gname">${esc(x.w.nome)}</p><p class="gsub">${esc(x.w.p)}, ${pc(x.w.pct)} dos votos válidos.</p></div></div></article>`;}
   if(x.tipo==="t2") return `<article class="gov t2" style="--c:var(--fx)"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag">2º turno</span></header>${duelHTML(x.cands.slice(0,2))}</article>`;
   return `<article class="gov" style="--c:var(--line)"><header><h4>${esc(nome)} <span>${x.uf}</span></h4><span class="tag">Em apuração</span></header></article>`;
 }
@@ -442,7 +456,7 @@ function viewGov(){
   return `<section class="panel">${head}
     <div class="govsum"><div><b>${eleitos.length}</b><span>eleitos no 1º turno${eleitos.some(x=>x.tipo==="eleito2")?" ou no 2º":""}</span></div><div><b>${t2.length}</b><span>estados com 2º turno</span></div>${ap.length?`<div><b>${ap.length}</b><span>ainda em apuração</span></div>`:""}
       <div><b>${b[0]}</b><span>eleitos de esquerda e centro-esq.</span></div><div><b>${b[1]}</b><span>eleitos de centro</span></div><div><b>${b[2]}</b><span>eleitos de direita e centro-dir.</span></div></div>
-    <div class="govmap"><div class="mapbox">${mapSVG(st)}
+    <div class="govmap"><div class="mapbox">${mapSVG(st)}<div class="tip" id="gtip"></div>
       <div class="spectrum">${FAIXAS.map((f,i)=>`<i><span class="sw" style="background:var(--f${i})"></span>${f}</i>`).join("")}<i><span class="sw hatch"></span>2º turno (cores dos dois finalistas)</i></div></div>
       <div class="mapside" id="govDetail">${govDetail(sel)}</div></div>
     <details class="names"><summary>Ver todos os estados em lista</summary><div class="govgrid" style="padding:0 18px 18px">${st.map(govCard).join("")}</div></details>
@@ -505,11 +519,11 @@ function govT2FromTSE(js, ref){
     if(Array.isArray(o)){o.forEach(x=>walk(x,sg));return}
     if(!o||typeof o!=="object")return;
     const p=o.sg||sg;
-    if("vap" in o && (o.nm||o.nmu)){ out.push({raw:o.nmu||o.nm, sg:p, n:String(o.n||""), votos:numTSE(o.vap), pct:numTSE(o.pvap), e:marcadoEleito(o), st:o.st||""}); return }
+    if("vap" in o && (o.nm||o.nmu)){ out.push({raw:o.nmu||o.nm, sq:o.sqcand?String(o.sqcand):"", sg:p, n:String(o.n||""), votos:numTSE(o.vap), pct:numTSE(o.pvap), e:marcadoEleito(o), st:o.st||""}); return }
     for(const k in o){ if(k!=="s"&&k!=="v"&&k!=="e"&&typeof o[k]==="object") walk(o[k],p) }
   })(js.carg||js,"");
   const byName={}; (ref||[]).forEach(c=>byName[semAc(c.nome)]=c);
-  const cands=out.map(c=>{ const r=byName[semAc(c.raw)]; return {nome:r?r.nome:c.raw.toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase()), p:r?r.p:(c.sg||"?").toUpperCase(), votos:c.votos, pct:c.pct, e:c.e, st:c.st}; });
+  const cands=out.map(c=>{ const r=byName[semAc(c.raw)]; return {nome:r?r.nome:c.raw.toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase()), p:r?r.p:(c.sg||"?").toUpperCase(), votos:c.votos, pct:c.pct, e:c.e, st:c.st, sq:c.sq||(r&&r.sq)||""}; });
   const tot=cands.reduce((a,c)=>a+c.votos,0);
   if(tot && !cands.some(c=>c.pct)) cands.forEach(c=>c.pct=c.votos/tot*100);
   cands.sort((a,b)=>b.votos-a.votos);
@@ -548,7 +562,23 @@ document.addEventListener("visibilitychange",()=>{ if(!document.hidden && state.
 const main=document.getElementById("main");
 function render(){
   main.innerHTML={senado:viewSenado,camara:viewCamara,alesp:viewAle,gov:viewGov,munic:viewMunic}[state.tab]();
-  bindHemi(); bindNames();
+  bindHemi(); bindNames(); bindGovTip();
+}
+function bindGovTip(){
+  const box=main.querySelector(".mapbox"), tip=document.getElementById("gtip"); if(!box||!tip) return;
+  const show=el=>{
+    const uf=el.dataset.guf, x={uf,...govState((D.gov||{})[uf])};
+    let txt;
+    if(x.tipo==="eleito"||x.tipo==="eleito2") txt=`<div class="tiprow">${fotoHTML(x.w.sq,x.w.nome)}<div><b>${esc(x.w.nome)}</b> · ${uf}<br>${esc(x.w.p)} — ${x.tipo==="eleito2"?"eleito no 2º turno":"eleito no 1º turno"}<br>${pc(x.w.pct)} dos votos válidos</div></div>`;
+    else if(x.tipo==="t2") txt=`<b>${UF[uf][0]}</b><br>2º turno: ${x.cands.slice(0,2).map(c=>`${esc(c.nome)} (${esc(c.p)})`).join(" × ")}`;
+    else txt=`<b>${UF[uf][0]}</b><br>Sem resultado ainda`;
+    tip.innerHTML=txt; tip.classList.add("show");
+    const br=box.getBoundingClientRect(), r=el.getBoundingClientRect(), tw=tip.offsetWidth;
+    tip.style.left=Math.max(tw/2+4,Math.min(br.width-tw/2-4,r.left-br.left+r.width/2))+"px";
+    tip.style.top=(r.top-br.top+Math.min(r.height/2,24))+"px";
+  };
+  box.addEventListener("pointerover",e=>{const g=e.target.closest("[data-guf]"); if(g) show(g);});
+  box.addEventListener("pointerleave",()=>tip.classList.remove("show"));
 }
 function bindNames(){
   main.querySelectorAll(".names").forEach(box=>{
@@ -565,7 +595,8 @@ function bindHemi(){
     main.querySelectorAll("table.parties tr").forEach(r=>r.classList.toggle("hl",r.dataset.p===p));
     if(!g)return;
     const s=current[+g.dataset.i]||{}, [nome,f]=pinfo(p);
-    tip.innerHTML=`<b>${esc(s.nome||p)}</b>${s.uf?` · ${s.uf}`:""}<br>${esc(p)} — ${f>=0?FAIXAS[f]:"sem classificação"}${s.votos?`<br>${fmt(s.votos)} votos`:""}${s.m?`<br>Mandato ${s.m}`:""}`;
+    const txt=`<b>${esc(s.nome||p)}</b>${s.uf?` · ${s.uf}`:""}<br>${esc(p)} — ${f>=0?FAIXAS[f]:"sem classificação"}${s.votos?`<br>${fmt(s.votos)} votos`:""}${s.m?`<br>Mandato ${s.m}`:""}`;
+    tip.innerHTML = s.sq ? `<div class="tiprow">${fotoHTML(s.sq,s.nome)}<div>${txt}</div></div>` : txt;
     tip.classList.add("show");
     const hr=hemi.getBoundingClientRect(), cr=g.getBoundingClientRect(), tw=tip.offsetWidth, x=cr.left-hr.left+cr.width/2;
     tip.style.left=Math.max(tw/2+4,Math.min(hr.width-tw/2-4,x))+"px"; tip.style.top=(cr.top-hr.top)+"px";
